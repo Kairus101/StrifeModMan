@@ -36,11 +36,12 @@ public class modMan {
 
 	public modMan()
 	{
+		gui = new GUI(this);
+		
 		//load config
 		loadFromConfig();
 
 		//init GUI
-		gui = new GUI(this);
 		loadModFiles();
 		gui.init();
 	}
@@ -291,8 +292,7 @@ public class modMan {
 				isDeveloper = false;
 			reader.close();
 		} catch (FileNotFoundException e1) {
-			System.out.println("none!");
-			gui.showMessage("Welcome to Strife ModMan!\nPlease select your hon folder.",
+			gui.showMessage("Welcome to Strife ModMan!\nPlease select your strife folder.",
 					"Welcome!", JOptionPane.PLAIN_MESSAGE);
 
 			JFileChooser chooser = new JFileChooser();
