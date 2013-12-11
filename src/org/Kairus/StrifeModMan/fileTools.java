@@ -71,6 +71,8 @@ public class fileTools {
 							mod.author = line.substring(8);
 						else if (line.toLowerCase().startsWith("version: "))
 							mod.version = line.substring(9);
+						else if (line.toLowerCase().startsWith("update link: "))
+							mod.updateLink = line.substring(13);
 						else if (line.toLowerCase().equals("start_modifications"))
 							readingModifications = true;
 				}else if (! fileName.toLowerCase().startsWith("original/")){

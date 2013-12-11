@@ -12,6 +12,7 @@ class mod{
 	String name = "defaultModName";
 	String author = "defaultModName";
 	String version = "0";
+	String updateLink = null;
 	ImageIcon image = null;
 	StringWriter xmlModifications = new StringWriter();
 	HashMap<String, String> patches = new HashMap<String, String>();

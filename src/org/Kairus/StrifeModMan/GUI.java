@@ -51,7 +51,7 @@ public class GUI extends JFrame {
 	JButton GUIapplyMods = new JButton("Apply mods");
 	JCheckBoxMenuItem GUIdevMode = new JCheckBoxMenuItem("developer mode");
 	ModsTableModel table;
-	ImageIcon defaultIcon = new ImageIcon("spritesheet.png");
+	ImageIcon defaultIcon = new ImageIcon("absolutely nothing.png");
 	
 	modMan modman;
 	

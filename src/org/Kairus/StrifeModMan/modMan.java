@@ -1,5 +1,6 @@
 package org.Kairus.StrifeModMan;
 
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -7,7 +8,10 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -19,12 +23,16 @@ import java.util.zip.ZipOutputStream;
 
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+
 import name.fraser.neil.plaintext.diff_match_patch;
 import name.fraser.neil.plaintext.diff_match_patch.Patch;
 
 public class modMan {
 	private static final long serialVersionUID = 1L;
-	String version = "1.0";
+	String version = "1.01";
+
+	boolean reloadMods = false;
+
 	public static void main(String[] args) {
 		new modMan();
 	}
@@ -38,15 +46,28 @@ public class modMan {
 	public modMan()
 	{
 		gui = new GUI(this);
-		
+
+		//update the main program
+		checkForUpdate();
+
 		//load config
 		loadFromConfig();
 
 		//init GUI
 		loadModFiles();
-		
+
+		if (gui.showYesNo("Update mods?", "Would you like to update your mods?") == 0){ //0 is yes.
+			//update mods
+			String updated = checkForModUpdates();
+			if (updated.length()>0)
+				gui.showMessage("Updated:\n"+updated);
+			if (reloadMods)
+				loadModFiles();
+		}
+
+		//load enabled mods
 		setModStatuses();
-		
+
 		gui.init();
 	}
 
@@ -271,6 +292,7 @@ public class modMan {
 	}
 
 	void loadModFiles(){
+		mods.clear();
 		final File folder = new File(System.getProperty("user.dir")+"/mods");
 		if(!folder.exists())
 			folder.mkdirs();
@@ -303,7 +325,7 @@ public class modMan {
 			appliedMods = reader.readLine();
 			if (appliedMods == null)
 				appliedMods = "";
-			
+
 			reader.close();
 		} catch (FileNotFoundException e1) {
 			gui.showMessage("Welcome to Strife ModMan!\nPlease select your strife folder.",
@@ -328,7 +350,7 @@ public class modMan {
 		for (Object[] o: gui.tableData)
 			if (appliedMods.contains((String)o[2]))
 				o[0] = true;
-				
+
 	}
 
 	public void saveConfig(){
@@ -344,6 +366,98 @@ public class modMan {
 		} catch (FileNotFoundException e2) {
 			e2.printStackTrace();
 		}
+	}
+	
+	private void checkForUpdate(){
+		try {
+			BufferedReader webIn;
+			webIn = new BufferedReader(new InputStreamReader(new URL("http://pastebin.com/raw.php?i=aXuwRyFM").openStream()));
+			String version = webIn.readLine();
+			String link = webIn.readLine();
+			if (!version.equals(this.version)){
+				gui.showMessage("Update found, automatically updating!");
+
+				int kbChunks = 1 << 10; //1kb
+
+				java.io.BufferedInputStream in = new java.io.BufferedInputStream(new java.net.URL(link).openStream());
+				java.io.FileOutputStream fos = new java.io.FileOutputStream("ModManager.jar");
+				java.io.BufferedOutputStream bout = new BufferedOutputStream(fos,kbChunks*1024);
+				byte[] data = new byte[kbChunks*1024];
+				int x=0;
+				while((x=in.read(data,0,kbChunks*1024))>=0)
+				{
+					bout.write(data,0,x);
+				}
+				bout.flush();
+				bout.close();
+				in.close();
+
+				gui.showMessage("Restarting!");
+
+				try {
+					final ArrayList<String> command = new ArrayList<String>();
+					command.add(System.getProperty("java.home") + File.separator + "bin" + File.separator + "java");
+					command.add("-jar");
+					command.add(new File("ModManager.jar").getAbsolutePath());
+					System.out.println(command);
+					final ProcessBuilder builder = new ProcessBuilder(command);
+					builder.start();
+				} catch (Exception e) {
+					throw new IOException("Error while trying to restart the application", e);
+				}
+				System.exit(0);
+			}
+		} catch (MalformedURLException e) {
+			gui.showMessage("Failed to update.");
+			e.printStackTrace();
+			System.exit(0);
+		} catch (IOException e) {
+			gui.showMessage("Failed to update.");
+			e.printStackTrace();
+			System.exit(0);
+		}
+	}
+
+	private String checkForModUpdates(){
+		String updated="";
+		for (mod m: mods){
+			try {
+				if (m.updateLink == null)
+					continue;
+				BufferedReader webIn;
+				webIn = new BufferedReader(new InputStreamReader(new URL(m.updateLink).openStream()));
+				String version = webIn.readLine();
+				String link = webIn.readLine();
+				if (!version.equals(m.version)){
+					updated += m.name + " "+m.version+" -> "+version+"\n";
+					int kbChunks = 1 << 14; //8kb
+
+					java.io.BufferedInputStream in = new java.io.BufferedInputStream(new java.net.URL(link).openStream());
+					java.io.FileOutputStream fos = new java.io.FileOutputStream(m.fileName);
+					java.io.BufferedOutputStream bout = new BufferedOutputStream(fos,kbChunks*1024);
+					byte[] data = new byte[kbChunks*1024];
+					int x=0;
+					while((x=in.read(data,0,kbChunks*1024))>=0)
+					{
+						bout.write(data,0,x);
+					}
+					bout.flush();
+					bout.close();
+					in.close();
+
+					reloadMods = true;
+				}
+			} catch (MalformedURLException e) {
+				gui.showMessage("Failed to update "+m.name+".");
+				e.printStackTrace();
+				System.exit(0);
+			} catch (IOException e) {
+				gui.showMessage("Failed to update "+m.name+".");
+				e.printStackTrace();
+				System.exit(0);
+			}
+		}
+		return updated;
 	}
 
 	class simpleStringParser{
