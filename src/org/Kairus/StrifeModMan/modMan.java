@@ -29,7 +29,7 @@ import name.fraser.neil.plaintext.diff_match_patch.Patch;
 
 public class modMan {
 	private static final long serialVersionUID = 1L;
-	String version = "1.01";
+	String version = "1.02";
 
 	boolean reloadMods = false;
 
@@ -61,6 +61,8 @@ public class modMan {
 			String updated = checkForModUpdates();
 			if (updated.length()>0)
 				gui.showMessage("Updated:\n"+updated);
+			else
+				gui.showMessage("All mods up to date!");
 			if (reloadMods)
 				loadModFiles();
 		}
@@ -270,13 +272,22 @@ public class modMan {
 			//remember close it
 			zos.close();
 			saveConfig();
-			gui.showMessage("Success.", "Mod merge successful", 3);
+			
+			if (gui.showYesNo("Success.", "Mod merge successful.\n\nLaunch Strife(HoN atm)") == 0){ //0 is yes.
+				final ArrayList<String> command = new ArrayList<String>();
+				command.add(s2Path+"/hon.exe");
+				final ProcessBuilder builder = new ProcessBuilder(command);
+				builder.start();
+				System.exit(0);
+			}
+			
 		} catch (java.io.FileNotFoundException e){
 			e.printStackTrace();
 			gui.showMessage("Failure, archive open or non-existant", "Failed to open files warning", JOptionPane.ERROR_MESSAGE);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		
 	}
 
 	public void addFileIfNotAdded(HashMap<String, String> toBeZipped, String file, ZipFile zipFile) throws IOException{
