@@ -30,6 +30,7 @@ public class modMan {
 	}
 	GUI gui;
 	String s2Path = null;
+	String appliedMods = "";
 	boolean isDeveloper = false;
 	ArrayList<mod> mods = new ArrayList<mod>();
 	byte[] buffer = new byte[1024];
@@ -43,6 +44,9 @@ public class modMan {
 
 		//init GUI
 		loadModFiles();
+		
+		setModStatuses();
+		
 		gui.init();
 	}
 
@@ -57,10 +61,12 @@ public class modMan {
 			ZipOutputStream zos = new ZipOutputStream(fos);
 			ZipFile zipFile = new ZipFile(path);
 
+			appliedMods = "";
 			int o = 0;
 			for (mod m: mods){
 				if ((Boolean)gui.tableData[o++][0] == false)
 					continue;
+				appliedMods += m.name+"|";
 				m.patchesToSave.clear();
 				ZipFile sourceZip = new ZipFile(m.fileName);
 				for (String s: m.fileNames){
@@ -128,9 +134,7 @@ public class modMan {
 							patch = differ.patch_make(original, diffs1);
 
 							if (isDeveloper){
-								String patchText = "";
-								for (Patch p: patch)
-									patchText=p.toString() + "\n";
+								String patchText = differ.patch_toText(patch);
 								m.patchesToSave.put(s, patchText);
 							}
 						}
@@ -244,6 +248,7 @@ public class modMan {
 			}
 			//remember close it
 			zos.close();
+			saveConfig();
 			gui.showMessage("Success.", "Mod merge successful", 3);
 		} catch (java.io.FileNotFoundException e){
 			e.printStackTrace();
@@ -285,11 +290,20 @@ public class modMan {
 	public void loadFromConfig(){
 		try {
 			BufferedReader reader = new BufferedReader(new FileReader("config.txt"));
+			//S2 path
 			s2Path = reader.readLine();
+			if (s2Path == null)
+				s2Path = "";
+			//Developer mode
 			if (reader.readLine().equals("1"))
 				isDeveloper = true;
 			else
 				isDeveloper = false;
+			//applied mods
+			appliedMods = reader.readLine();
+			if (appliedMods == null)
+				appliedMods = "";
+			
 			reader.close();
 		} catch (FileNotFoundException e1) {
 			gui.showMessage("Welcome to Strife ModMan!\nPlease select your strife folder.",
@@ -310,6 +324,13 @@ public class modMan {
 		}
 	}
 
+	public void setModStatuses(){
+		for (Object[] o: gui.tableData)
+			if (appliedMods.contains((String)o[2]))
+				o[0] = true;
+				
+	}
+
 	public void saveConfig(){
 		try {
 			PrintWriter pr = new PrintWriter(new File("config.txt"));
@@ -318,6 +339,7 @@ public class modMan {
 				pr.println(1);
 			else
 				pr.println(0);
+			pr.println(appliedMods);
 			pr.close();
 		} catch (FileNotFoundException e2) {
 			e2.printStackTrace();

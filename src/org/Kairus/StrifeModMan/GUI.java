@@ -81,13 +81,14 @@ public class GUI extends JFrame {
 		add(GUImenuBar, BorderLayout.NORTH);
 
 
-		String[] columnNames = {"Enabled", "Name", "Author", "Version", "Icon"};
+		String[] columnNames = {"Enabled", "Icon", "Name", "Author", "Version"};
 		
 		table = new ModsTableModel(tableData, columnNames);
 		//table.set
 		table.setRowHeight(50);
 		table.setPreferredScrollableViewportSize(new Dimension(200, 70));
 		table.setFillsViewportHeight(true);
+		table.getColumnModel().getColumn(2).setMinWidth(150);
 		JScrollPane modPanel = new JScrollPane(table);
 		add(modPanel, BorderLayout.CENTER);
 

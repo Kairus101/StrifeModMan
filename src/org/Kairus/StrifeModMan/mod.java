@@ -24,6 +24,6 @@ class mod{
 		modman = mm;
 	}
 	Object[] getData(){
-		return new Object[]{false, name, author, version, image!=null?image:modman.gui.defaultIcon};
+		return new Object[]{false, image!=null?image:modman.gui.defaultIcon, name, author, version};
 	}
 }
