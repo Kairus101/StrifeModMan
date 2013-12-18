@@ -18,6 +18,7 @@ class mod{
 	HashMap<String, String> patches = new HashMap<String, String>();
 	HashMap<String, String> patchesToSave = new HashMap<String, String>();
 	modMan modman;
+	boolean replaceWithoutPatchCheck = false;
 
 
 	mod(String fileName, modMan mm){
@@ -25,6 +26,6 @@ class mod{
 		modman = mm;
 	}
 	Object[] getData(){
-		return new Object[]{false, image!=null?image:modman.gui.defaultIcon, name, author, version};
+		return new Object[]{false, image!=null?image:modman.gui.defaultIcon, "<html>"+name+"</html>", author, version};
 	}
 }

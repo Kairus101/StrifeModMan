@@ -23,13 +23,14 @@ import java.util.zip.ZipOutputStream;
 
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import javax.swing.table.DefaultTableModel;
 
 import name.fraser.neil.plaintext.diff_match_patch;
 import name.fraser.neil.plaintext.diff_match_patch.Patch;
 
 public class modMan {
 	private static final long serialVersionUID = 1L;
-	String version = "1.02";
+	String version = "1.04";
 
 	boolean reloadMods = false;
 
@@ -38,6 +39,7 @@ public class modMan {
 	}
 	GUI gui;
 	String s2Path = null;
+	String repoPath = "http://mods.strifehub.com/";
 	String appliedMods = "";
 	boolean isDeveloper = false;
 	ArrayList<mod> mods = new ArrayList<mod>();
@@ -56,7 +58,7 @@ public class modMan {
 		//init GUI
 		loadModFiles();
 
-		if (gui.showYesNo("Update mods?", "Would you like to update your mods?") == 0){ //0 is yes.
+		if ( mods.size()>0 && gui.showYesNo("Update mods?", "Would you like to update your mods?") == 0){ //0 is yes.
 			//update mods
 			String updated = checkForModUpdates();
 			if (updated.length()>0)
@@ -77,7 +79,7 @@ public class modMan {
 		HashMap<String, String> toBeZipped = new HashMap<String, String>();
 		HashMap<String, Boolean> alreadyZipped = new HashMap<String, Boolean>();
 
-		String output = s2Path+"/game/resources1.s2z";
+		String output = s2Path+"/game/resources2.s2z";
 		String path = s2Path+"/game/resources0.s2z";
 		try {
 			FileOutputStream fos = new FileOutputStream(output);
@@ -96,7 +98,7 @@ public class modMan {
 					//target
 					ZipEntry entry = zipFile.getEntry(s);
 					//source
-					if (entry==null){ //new file
+					if (entry==null || m.replaceWithoutPatchCheck){ //new file
 						ZipEntry sourceFile = sourceZip.getEntry(s);
 						InputStream zis = sourceZip.getInputStream(sourceFile);
 
@@ -273,9 +275,9 @@ public class modMan {
 			zos.close();
 			saveConfig();
 			
-			if (gui.showYesNo("Success.", "Mod merge successful.\n\nLaunch Strife(HoN atm)") == 0){ //0 is yes.
+			if (gui.showYesNo("Success.", "Mod merge successful.\n\nLaunch Strife") == 0){ //0 is yes.
 				final ArrayList<String> command = new ArrayList<String>();
-				command.add(s2Path+"/hon.exe");
+				command.add(s2Path+"/bin/strife.exe");
 				final ProcessBuilder builder = new ProcessBuilder(command);
 				builder.start();
 				System.exit(0);
@@ -283,7 +285,7 @@ public class modMan {
 			
 		} catch (java.io.FileNotFoundException e){
 			e.printStackTrace();
-			gui.showMessage("Failure, archive open or non-existant", "Failed to open files warning", JOptionPane.ERROR_MESSAGE);
+			gui.showMessage("Failure, archive open or non-existant\nAre you running Strife? Close it.\nHave you got a mod/resource file open? Close it.", "Failed to open files warning", JOptionPane.ERROR_MESSAGE);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -317,7 +319,11 @@ public class modMan {
 		for (int i = 0;i<mods.size();i++){
 			gui.tableData[i]=mods.get(i).getData();
 		}
-
+		if (gui.table != null){
+			String[] columnNames = {"Enabled", "Icon", "Name", "Author", "Version"};
+			gui.table.setModel(new DefaultTableModel(gui.tableData, columnNames));
+			gui.table.revalidate();
+		}
 	}
 
 	public void loadFromConfig(){
@@ -384,6 +390,7 @@ public class modMan {
 			BufferedReader webIn;
 			webIn = new BufferedReader(new InputStreamReader(new URL("http://pastebin.com/raw.php?i=aXuwRyFM").openStream()));
 			String version = webIn.readLine();
+			if (version.startsWith("<")) throw new Exception();
 			String link = webIn.readLine();
 			if (!version.equals(this.version)){
 				gui.showMessage("Update found, automatically updating!");
@@ -418,45 +425,86 @@ public class modMan {
 				}
 				System.exit(0);
 			}
-		} catch (MalformedURLException e) {
-			gui.showMessage("Failed to update.");
-			e.printStackTrace();
-			System.exit(0);
-		} catch (IOException e) {
-			gui.showMessage("Failed to update.");
-			e.printStackTrace();
-			System.exit(0);
+		} catch (Exception e) {
+			gui.showMessage("Failed to update modman.\nThis could be because:\n\nYou aren't connected to the internet\nYou are using a proxy\nstrifehub.com is down.","Failure updateing modman",0);
 		}
 	}
 
+	ArrayList<onlineModDescription> onlineModList = new ArrayList<onlineModDescription>();
+	private onlineModDescription getOnlineModDescription(String name){
+		for (onlineModDescription i:onlineModList)
+			if (i.name.equals(name))
+				return i;
+		return null;
+	}
+	
+	public void populateOnlineModsTable(){
+		if (onlineModList.size()==0){
+			//populate the online mods table.
+			try {
+				BufferedReader webIn;
+				webIn = new BufferedReader(new InputStreamReader(new URL(repoPath+"rawModList.php").openStream()));
+				String input;
+				while ((input=webIn.readLine())!=null){
+					if (input.startsWith("<")) throw new Exception();
+					onlineModList.add(new onlineModDescription(input));
+				}
+			} catch (Exception e) {
+				gui.showMessage("Failed to get mods.\nThis could be because:\n\nYou aren't connected to the internet\nYou are using a proxy\nstrifehub.com is down.","Failure getting online mod list",0);
+				//e.printStackTrace();
+				onlineModList.add(new onlineModDescription("example mod|Kairus101|1.0|1|gameplay|use ^q to make your text rainbow|RainbowAdder.strifemod"));
+			}
+		}
+	}
+	
+	private boolean purgedOnlineList = false;
+	public void purgeOnlineModsTable(){
+		if (purgedOnlineList) return;
+		for (int i = 0;i<mods.size();i++){
+			for (int o = 0;o<onlineModList.size();o++){
+				if (mods.get(i).name.equals(onlineModList.get(o).name)){
+					onlineModList.remove(o);
+					o--;
+				}
+			}	
+		}
+		purgedOnlineList = true;
+	}
+	
 	private String checkForModUpdates(){
+		
+		populateOnlineModsTable();
+		purgedOnlineList = false;
+		
 		String updated="";
 		for (mod m: mods){
+			
 			try {
-				if (m.updateLink == null)
-					continue;
-				BufferedReader webIn;
-				webIn = new BufferedReader(new InputStreamReader(new URL(m.updateLink).openStream()));
-				String version = webIn.readLine();
-				String link = webIn.readLine();
-				if (!version.equals(m.version)){
-					updated += m.name + " "+m.version+" -> "+version+"\n";
-					int kbChunks = 1 << 14; //8kb
-
-					java.io.BufferedInputStream in = new java.io.BufferedInputStream(new java.net.URL(link).openStream());
-					java.io.FileOutputStream fos = new java.io.FileOutputStream(m.fileName);
-					java.io.BufferedOutputStream bout = new BufferedOutputStream(fos,kbChunks*1024);
-					byte[] data = new byte[kbChunks*1024];
-					int x=0;
-					while((x=in.read(data,0,kbChunks*1024))>=0)
-					{
-						bout.write(data,0,x);
+				String latestVersion = null;
+				String latestLink = null;
+				
+				//check mod repo
+				onlineModDescription onlineModDesc = getOnlineModDescription(m.name);
+				if (onlineModDesc!=null){
+					latestVersion = onlineModDesc.version;
+					latestLink = repoPath+onlineModDesc.link.replace(" ", "%20");
+				}
+				//check mod update link
+				if (m.updateLink != null){
+					BufferedReader webIn;
+					webIn = new BufferedReader(new InputStreamReader(new URL(m.updateLink).openStream()));
+					String version = webIn.readLine();
+					String link = webIn.readLine();
+					//if we are out of date, and the link version is higher than the repo version
+					if (!version.equals(m.version) && (latestVersion==null || version.compareTo(latestVersion) > 0)){
+						latestVersion = version;
+						latestLink = link;
 					}
-					bout.flush();
-					bout.close();
-					in.close();
-
-					reloadMods = true;
+				}
+				//we have an update, grab it.
+				if (latestVersion!=null && m.version.compareTo(latestVersion) < 0){
+					updated += m.name + " "+m.version+" -> "+latestVersion+"\n";
+					downloadMod(latestLink, m.fileName);
 				}
 			} catch (MalformedURLException e) {
 				gui.showMessage("Failed to update "+m.name+".");
@@ -469,6 +517,31 @@ public class modMan {
 			}
 		}
 		return updated;
+	}
+	
+	void downloadMod(String link, String filename){
+		try {
+			int kbChunks = 1 << 14; //8kb
+			java.io.BufferedInputStream in = new java.io.BufferedInputStream(new java.net.URL(link).openStream());
+			java.io.FileOutputStream fos = new java.io.FileOutputStream(filename);
+			java.io.BufferedOutputStream bout = new BufferedOutputStream(fos,kbChunks*1024);
+			byte[] data = new byte[kbChunks*1024];
+			int x=0;
+			while((x=in.read(data,0,kbChunks*1024))>=0)
+			{
+				bout.write(data,0,x);
+			}
+			bout.flush();
+			bout.close();
+			in.close();
+			gui.showMessage("Finished downloading mod to:\n"+filename+"\nIt has been added to your mods list.");
+			mods.add(fileTools.loadModFile(new File(filename), this));
+			gui.addToTable(mods.get(mods.size()-1).getData());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		reloadMods = true;
 	}
 
 	class simpleStringParser{
@@ -485,6 +558,26 @@ public class modMan {
 			if (currentString.startsWith("\n")) currentString = currentString.substring(1);
 			if (currentString.endsWith("\n")) currentString = currentString.substring(0,currentString.length()-1);
 			return currentString;
+		}
+	}
+	
+	class onlineModDescription{
+		String name;
+		String author;
+		String version;
+		String rating;
+		String category;
+		String description;
+		String link;
+		onlineModDescription(String text){
+			simpleStringParser ssp = new simpleStringParser(text);
+			name=ssp.GetNextString();
+			author=ssp.GetNextString();
+			version=ssp.GetNextString();
+			rating=ssp.GetNextString();
+			category=ssp.GetNextString();
+			description=ssp.GetNextString();
+			link=ssp.GetNextString();
 		}
 	}
 }

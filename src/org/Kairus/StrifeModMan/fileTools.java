@@ -1,5 +1,6 @@
 package org.Kairus.StrifeModMan;
 
+import java.awt.Image;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -49,7 +50,9 @@ public class fileTools {
 				}
 				//System.out.println(fileName);
 				if (fileName.toLowerCase().equals("icon.png")){
-					mod.image = new ImageIcon(ImageIO.read(zis));
+					//mod.image = new ImageIcon(ImageIO.read(zis));
+					Image img = ImageIO.read(zis);
+					mod.image = new ImageIcon(img.getScaledInstance(55, 55, Image.SCALE_SMOOTH));
 				}else if (fileName.toLowerCase().startsWith("patch_")){
 					StringWriter sw = new StringWriter();
 					BufferedReader reader = new BufferedReader(new InputStreamReader(zis));
@@ -73,6 +76,9 @@ public class fileTools {
 							mod.version = line.substring(9);
 						else if (line.toLowerCase().startsWith("update link: "))
 							mod.updateLink = line.substring(13);
+						else if (line.toLowerCase().startsWith("replacewithoutpatchcheck: "))
+							if (line.substring(26).equals("true"))
+								mod.replaceWithoutPatchCheck = true;
 						else if (line.toLowerCase().equals("start_modifications"))
 							readingModifications = true;
 				}else if (! fileName.toLowerCase().startsWith("original/")){
