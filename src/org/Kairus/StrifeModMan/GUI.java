@@ -41,6 +41,7 @@ import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.RowFilter;
 import javax.swing.UIManager;
+import javax.swing.UIManager.LookAndFeelInfo;
 import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -121,6 +122,14 @@ public class GUI extends JFrame {
 	}
 	public void init(){
 		try {
+			/*
+			for (LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
+		        if ("Nimbus".equals(info.getName())) {
+		            UIManager.setLookAndFeel(info.getClassName());
+		            break;
+		        }
+		    }
+			*/
 			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()); //platform dependent
 			//UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName()); //default
 			//UIManager.setLookAndFeel("com.sun.java.swing.plaf.motif.MotifLookAndFeel"); //odd looking.
@@ -258,18 +267,19 @@ public class GUI extends JFrame {
 						"2. Make changes to those files, these will affect strife directly\n"+
 						"  either \"reload interfaces\" in console or a restart will make changes active\n"+
 						"3. Put your modified files into a .zip, along with a mod.txt file with\n"+
-						"  name:<name Of Mod>\n"+
-						"  version:<version Of Mod>\n"+
-						"  author:<author of mod>\n\n"+
+						"  name:<name of mod>\n"+
+						"  version:<version of mod>\n"+
+						"  author:<author of mod>\n"+
+						"  category:<category of mod>\n"+
+						"  description:<description of mod>\n\n"+
 						"4. Add an icon.png to the zip file, this isn't required, but it is recommended.\n"+
 						"5. For all your modified files, place the original ones, from resources0 into\n"+
 						"  a folder named \"original\" in the zip file, then rename your .zip to .strifemod.\n"+
-						"6. run modMan, and apply the mod - it will ask you if you want to make an official version.\n"
+						"6. run modMan, check settings->developer mode, and apply the mod.\n"
+						+ "  It will ask you if you want to make an official version.\n"
 						+ "  Say yes. Put your mod somewhere safe and put the mod it made for you into mods.\n"
 						+ "7. Check that you can apply your official mod.\n"
-						+ "8. Atm, 8a isn't gonna happen (coming soon). Add my skype: Kairus101 and chat with me :)\n"
-						+ "  I'll put your mod up, as if you uploaded it\n"
-						+ "8a. Go to mods.Strifehub.com and upload your file.\n"
+						+ "8. Go to mods.Strifehub.com, log in and upload your file.\n"
 						+ "\n"
 						+ "There are other (harder) ways of applying the mods, similar to the HoN modMan\n"
 						+ "Go to <forum link> to get more information.",
@@ -367,9 +377,7 @@ public class GUI extends JFrame {
 				public void valueChanged(ListSelectionEvent e) {
 					if (e.getValueIsAdjusting()) return;
 					ListSelectionModel lsm = (ListSelectionModel)e.getSource();
-					if (lsm.isSelectionEmpty()) {
-						System.out.println("No rows are selected.");
-					} else {
+					if (!lsm.isSelectionEmpty()) {
 						int selectedRow = lsm.getMinSelectionIndex();
 						GUImodName.setText(modman.mods.get(selectedRow).name);
 						GUImodAuthor.setText(modman.mods.get(selectedRow).author);

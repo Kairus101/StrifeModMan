@@ -30,7 +30,7 @@ import name.fraser.neil.plaintext.diff_match_patch.Patch;
 
 public class modMan {
 	private static final long serialVersionUID = 1L;
-	String version = "1.04";
+	String version = "1.05";
 
 	boolean reloadMods = false;
 
@@ -78,14 +78,44 @@ public class modMan {
 	void applyMods(){
 		HashMap<String, String> toBeZipped = new HashMap<String, String>();
 		HashMap<String, Boolean> alreadyZipped = new HashMap<String, Boolean>();
+		
+		//toBeZipped.put("modmanPlaceholder", "");
 
-		String output = s2Path+"/game/resources2.s2z";
+		//lets find out output.
+		int archiveNumber = 2;
+		String output = null;
+		while (true){
+			output = s2Path+"/game/resources"+archiveNumber+".s2z";
+			ZipFile zipFile = null;
+			try {
+				zipFile = new ZipFile(output);
+				if ((zipFile.getComment() != null && zipFile.getComment().equals("Long live... ModMan!")) || (archiveNumber==2&&new File(s2Path+"/game/resources"+archiveNumber+".s2z").length()<14000)){
+					//we've found our guy.
+					zipFile.close();
+					break;
+				}
+			} catch (IOException e) {
+				//perfect. Archive doesn't exist.. yet.
+				break;
+			}
+			try {
+				zipFile.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			archiveNumber++;
+		}
+		
+		
+		
+		
+		
 		String path = s2Path+"/game/resources0.s2z";
 		try {
 			FileOutputStream fos = new FileOutputStream(output);
 			ZipOutputStream zos = new ZipOutputStream(fos);
+			zos.setComment("Long live... ModMan!");
 			ZipFile zipFile = new ZipFile(path);
-
 			appliedMods = "";
 			int o = 0;
 			for (mod m: mods){
