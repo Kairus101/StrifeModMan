@@ -30,7 +30,7 @@ import name.fraser.neil.plaintext.diff_match_patch.Patch;
 
 public class modMan {
 	private static final long serialVersionUID = 1L;
-	String version = "1.05";
+	String version = "1.06";
 
 	boolean reloadMods = false;
 
@@ -58,6 +58,11 @@ public class modMan {
 		//init GUI
 		loadModFiles();
 
+		//load enabled mods
+		setModStatuses();
+
+		gui.init();
+
 		if ( mods.size()>0 && gui.showYesNo("Update mods?", "Would you like to update your mods?") == 0){ //0 is yes.
 			//update mods
 			String updated = checkForModUpdates();
@@ -68,17 +73,12 @@ public class modMan {
 			if (reloadMods)
 				loadModFiles();
 		}
-
-		//load enabled mods
-		setModStatuses();
-
-		gui.init();
 	}
 
 	void applyMods(){
 		HashMap<String, String> toBeZipped = new HashMap<String, String>();
 		HashMap<String, Boolean> alreadyZipped = new HashMap<String, Boolean>();
-		
+
 		//toBeZipped.put("modmanPlaceholder", "");
 
 		//lets find out output.
@@ -105,11 +105,11 @@ public class modMan {
 			}
 			archiveNumber++;
 		}
-		
-		
-		
-		
-		
+
+
+
+
+
 		String path = s2Path+"/game/resources0.s2z";
 		try {
 			FileOutputStream fos = new FileOutputStream(output);
@@ -304,7 +304,7 @@ public class modMan {
 			//remember close it
 			zos.close();
 			saveConfig();
-			
+
 			if (gui.showYesNo("Success.", "Mod merge successful.\n\nLaunch Strife") == 0){ //0 is yes.
 				final ArrayList<String> command = new ArrayList<String>();
 				command.add(s2Path+"/bin/strife.exe");
@@ -312,14 +312,14 @@ public class modMan {
 				builder.start();
 				System.exit(0);
 			}
-			
+
 		} catch (java.io.FileNotFoundException e){
 			e.printStackTrace();
 			gui.showMessage("Failure, archive open or non-existant\nAre you running Strife? Close it.\nHave you got a mod/resource file open? Close it.", "Failed to open files warning", JOptionPane.ERROR_MESSAGE);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
+
 	}
 
 	public void addFileIfNotAdded(HashMap<String, String> toBeZipped, String file, ZipFile zipFile) throws IOException{
@@ -394,9 +394,12 @@ public class modMan {
 	}
 
 	public void setModStatuses(){
-		for (Object[] o: gui.tableData)
-			if (appliedMods.contains((String)o[2]))
+		for (Object[] o: gui.tableData){
+			String tmp = (String)o[2];
+			if (appliedMods.contains(tmp.substring(6, tmp.length()-7))){
 				o[0] = true;
+			}
+		}
 
 	}
 
@@ -414,7 +417,7 @@ public class modMan {
 			e2.printStackTrace();
 		}
 	}
-	
+
 	private void checkForUpdate(){
 		try {
 			BufferedReader webIn;
@@ -467,7 +470,7 @@ public class modMan {
 				return i;
 		return null;
 	}
-	
+
 	public void populateOnlineModsTable(){
 		if (onlineModList.size()==0){
 			//populate the online mods table.
@@ -486,7 +489,7 @@ public class modMan {
 			}
 		}
 	}
-	
+
 	private boolean purgedOnlineList = false;
 	public void purgeOnlineModsTable(){
 		if (purgedOnlineList) return;
@@ -500,19 +503,19 @@ public class modMan {
 		}
 		purgedOnlineList = true;
 	}
-	
+
 	private String checkForModUpdates(){
-		
+
 		populateOnlineModsTable();
 		purgedOnlineList = false;
-		
+
 		String updated="";
 		for (mod m: mods){
-			
+
 			try {
 				String latestVersion = null;
 				String latestLink = null;
-				
+
 				//check mod repo
 				onlineModDescription onlineModDesc = getOnlineModDescription(m.name);
 				if (onlineModDesc!=null){
@@ -535,6 +538,8 @@ public class modMan {
 				if (latestVersion!=null && m.version.compareTo(latestVersion) < 0){
 					updated += m.name + " "+m.version+" -> "+latestVersion+"\n";
 					downloadMod(latestLink, m.fileName);
+					gui.removeFromTable1(mods.indexOf(m));
+					mods.remove(m);
 				}
 			} catch (MalformedURLException e) {
 				gui.showMessage("Failed to update "+m.name+".");
@@ -548,7 +553,7 @@ public class modMan {
 		}
 		return updated;
 	}
-	
+
 	void downloadMod(String link, String filename){
 		try {
 			int kbChunks = 1 << 14; //8kb
@@ -564,7 +569,6 @@ public class modMan {
 			bout.flush();
 			bout.close();
 			in.close();
-			gui.showMessage("Finished downloading mod to:\n"+filename+"\nIt has been added to your mods list.");
 			mods.add(fileTools.loadModFile(new File(filename), this));
 			gui.addToTable(mods.get(mods.size()-1).getData());
 		} catch (IOException e) {
@@ -590,7 +594,7 @@ public class modMan {
 			return currentString;
 		}
 	}
-	
+
 	class onlineModDescription{
 		String name;
 		String author;

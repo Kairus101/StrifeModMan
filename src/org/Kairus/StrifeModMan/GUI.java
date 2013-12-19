@@ -447,6 +447,10 @@ public class GUI extends JFrame {
 		DefaultTableModel model = (DefaultTableModel) table2.getModel();
 		model.removeRow(i);
 	}
+	void removeFromTable1(int i){
+		DefaultTableModel model = (DefaultTableModel) table.getModel();
+		model.removeRow(i);
+	}
 
 	public void showMessage(String content){
 		JOptionPane.showMessageDialog(this, content);
