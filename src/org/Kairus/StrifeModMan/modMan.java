@@ -66,12 +66,12 @@ public class modMan {
 		if ( mods.size()>0 && gui.showYesNo("Update mods?", "Would you like to update your mods?") == 0){ //0 is yes.
 			//update mods
 			String updated = checkForModUpdates();
-			if (updated.length()>0)
+			if (updated.length()>0){
 				gui.showMessage("Updated:\n"+updated);
-			else
+			}else
 				gui.showMessage("All mods up to date!");
-			if (reloadMods)
-				loadModFiles();
+			//if (reloadMods)
+			//	loadModFiles();
 		}
 	}
 
@@ -105,10 +105,6 @@ public class modMan {
 			}
 			archiveNumber++;
 		}
-
-
-
-
 
 		String path = s2Path+"/game/resources0.s2z";
 		try {
@@ -510,7 +506,8 @@ public class modMan {
 		purgedOnlineList = false;
 
 		String updated="";
-		for (mod m: mods){
+		for (int i = 0; i < mods.size(); i++){
+			mod m = mods.get(i);
 
 			try {
 				String latestVersion = null;
@@ -539,7 +536,8 @@ public class modMan {
 					updated += m.name + " "+m.version+" -> "+latestVersion+"\n";
 					downloadMod(latestLink, m.fileName);
 					gui.removeFromTable1(mods.indexOf(m));
-					mods.remove(m);
+					mods.remove(i);
+					i--;
 				}
 			} catch (MalformedURLException e) {
 				gui.showMessage("Failed to update "+m.name+".");
@@ -574,8 +572,6 @@ public class modMan {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
-		reloadMods = true;
 	}
 
 	class simpleStringParser{
