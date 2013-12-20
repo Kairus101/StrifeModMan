@@ -30,7 +30,7 @@ import name.fraser.neil.plaintext.diff_match_patch.Patch;
 
 public class modMan {
 	private static final long serialVersionUID = 1L;
-	String version = "1.06";
+	String version = "1.07";
 
 	boolean reloadMods = false;
 
@@ -75,6 +75,21 @@ public class modMan {
 		}
 	}
 
+	String findFileInS2(int number, String name){
+		try {
+			for (int i = number-1;i>=0;i--){
+				ZipFile zipFile;
+				zipFile = new ZipFile(s2Path+"/game/resources"+i+".s2z");
+				ZipEntry entry =  zipFile.getEntry(name);
+				if (entry != null)
+					return fileTools.store(zipFile.getInputStream(entry));
+			}
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+		return null;
+	}
+	int archiveNumber = 2;
 	void applyMods(){
 		HashMap<String, String> toBeZipped = new HashMap<String, String>();
 		HashMap<String, Boolean> alreadyZipped = new HashMap<String, Boolean>();
@@ -82,7 +97,6 @@ public class modMan {
 		//toBeZipped.put("modmanPlaceholder", "");
 
 		//lets find out output.
-		int archiveNumber = 2;
 		String output = null;
 		while (true){
 			output = s2Path+"/game/resources"+archiveNumber+".s2z";
@@ -106,12 +120,10 @@ public class modMan {
 			archiveNumber++;
 		}
 
-		String path = s2Path+"/game/resources0.s2z";
 		try {
 			FileOutputStream fos = new FileOutputStream(output);
 			ZipOutputStream zos = new ZipOutputStream(fos);
 			zos.setComment("Long live... ModMan!");
-			ZipFile zipFile = new ZipFile(path);
 			appliedMods = "";
 			int o = 0;
 			for (mod m: mods){
@@ -121,10 +133,11 @@ public class modMan {
 				m.patchesToSave.clear();
 				ZipFile sourceZip = new ZipFile(m.fileName);
 				for (String s: m.fileNames){
-					//target
-					ZipEntry entry = zipFile.getEntry(s);
+					
+					String fileInS2 = findFileInS2(archiveNumber, s);
+					
 					//source
-					if (entry==null || m.replaceWithoutPatchCheck){ //new file
+					if (fileInS2==null || m.replaceWithoutPatchCheck){ //new file
 						ZipEntry sourceFile = sourceZip.getEntry(s);
 						InputStream zis = sourceZip.getInputStream(sourceFile);
 
@@ -159,7 +172,7 @@ public class modMan {
 						if (toBeZipped.get(s) != null){ // not the first mod
 							current = toBeZipped.get(s);
 						}else
-							current = fileTools.store(zipFile.getInputStream(entry)); //current
+							current = fileInS2; //current
 
 						//step 1
 						//check for a patch file, if so, skip to step 3
@@ -252,7 +265,7 @@ public class modMan {
 					//Is this a valid command?
 					if (modification.toLowerCase().trim().equals("replace") || modification.toLowerCase().trim().equals("add before") || modification.toLowerCase().trim().equals("add after")){
 						String file = parser.GetNextString();
-						addFileIfNotAdded(toBeZipped, file, zipFile);
+						addFileIfNotAdded(toBeZipped, file);
 						String fileText = toBeZipped.get(file);
 						String text1 = parser.GetNextString();
 						String text2 = parser.GetNextString();
@@ -318,14 +331,14 @@ public class modMan {
 
 	}
 
-	public void addFileIfNotAdded(HashMap<String, String> toBeZipped, String file, ZipFile zipFile) throws IOException{
+	public void addFileIfNotAdded(HashMap<String, String> toBeZipped, String file) throws IOException{
 		if (toBeZipped.get(file) == null){//we need to add the file to toBeZipped
-			ZipEntry entry = zipFile.getEntry(file);
-			if (entry == null){
+			String s2File = findFileInS2(archiveNumber, file);
+			if (s2File == null){
 				gui.showMessage("Error: file: "+file+" not found! Mod won't be applied.", "Mod merge unsuccessful", 1);
 				throw new IOException();
 			}else{
-				toBeZipped.put(file, fileTools.store(zipFile.getInputStream(entry)));
+				toBeZipped.put(file, s2File);
 			}
 		}
 	}
