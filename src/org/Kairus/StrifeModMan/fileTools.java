@@ -11,8 +11,6 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -74,6 +72,8 @@ public class fileTools {
 							mod.author = line.substring(8);
 						else if (line.toLowerCase().startsWith("version: "))
 							mod.version = line.substring(9);
+						else if (line.toLowerCase().startsWith("category: "))
+							mod.category = line.substring(10);
 						else if (line.toLowerCase().startsWith("update link: "))
 							mod.updateLink = line.substring(13);
 						else if (line.toLowerCase().startsWith("replacewithoutpatchcheck: "))

@@ -79,7 +79,7 @@ public class GUI extends JFrame {
 		RowFilter<DefaultTableModel, Object> rf = null;
 		try {
 			ArrayList<RowFilter<Object, Object>> rfs = new ArrayList<RowFilter<Object,Object>>(2);
-			rfs.add(RowFilter.regexFilter(Pattern.compile("(?i)"+filterMods.getText()).toString(),2,3,4));
+			rfs.add(RowFilter.regexFilter(Pattern.compile("(?i)"+filterMods.getText()).toString(),2,3,4,5));
 			rf = RowFilter.orFilter(rfs);
 		} catch (java.util.regex.PatternSyntaxException e) {
 			return;
@@ -104,6 +104,7 @@ public class GUI extends JFrame {
 		modman = mm;
 	}
 	public void init(){
+		showMessage("Warning!\nThis modman is still in beta!\nBefore you update your strife, disable all mods,\nor they will be permanently in your game!\nI'm talking with S2 to resolve this bug.", "Warning", 0);
 		try {
 			/*
 			for (LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
@@ -140,7 +141,7 @@ public class GUI extends JFrame {
 		add(GUImenuBar, BorderLayout.NORTH);
 
 
-		String[] columnNames = {"Enabled", "Icon", "Name", "Author", "Version"};
+		String[] columnNames = {"Enabled", "Icon", "Name", "Author", "Version", "Category"};
 
 		DefaultTableModel dataModel = new DefaultTableModel(tableData, columnNames);
 		table = new ModsTableModel(dataModel);
@@ -151,6 +152,7 @@ public class GUI extends JFrame {
 		table.setPreferredScrollableViewportSize(new Dimension(200, 70));
 		table.setFillsViewportHeight(true);
 		table.getColumnModel().getColumn(2).setMinWidth(150);
+		table.removeColumn(table.getColumnModel().getColumn(5));
 		JScrollPane modPanel = new JScrollPane(table);
 		panel1.add(modPanel, BorderLayout.CENTER);
 
@@ -170,15 +172,18 @@ public class GUI extends JFrame {
 
 		//bottom bar
 		JPanel bottomPanel = new JPanel();
-		bottomPanel.add(new JLabel("Filter name/author"));
+		bottomPanel.add(new JLabel("Filter name/author/category"));
 		bottomPanel.add(filterMods);
 		filterMods.getDocument().addDocumentListener(new DocumentListener() {
+			@Override
 			public void changedUpdate(DocumentEvent e) {
 				newFilter();
 			}
+			@Override
 			public void insertUpdate(DocumentEvent e) {
 				newFilter();
 			}
+			@Override
 			public void removeUpdate(DocumentEvent e) {
 				newFilter();
 			}});
@@ -192,12 +197,15 @@ public class GUI extends JFrame {
 		bottomPanel.add(new JLabel("Filter name/author/description/category"));
 		bottomPanel.add(filterOnline);
 		filterOnline.getDocument().addDocumentListener(new DocumentListener() {
+			@Override
 			public void changedUpdate(DocumentEvent e) {
 				newFilter2();
 			}
+			@Override
 			public void insertUpdate(DocumentEvent e) {
 				newFilter2();
 			}
+			@Override
 			public void removeUpdate(DocumentEvent e) {
 				newFilter2();
 			}});
@@ -208,10 +216,11 @@ public class GUI extends JFrame {
 
 		// events
 		GUIdownloadMod.addActionListener(new ActionListener(){
+			@Override
 			public void actionPerformed(ActionEvent e) {
 				if (showYesNo("Are you sure you want to download mod", "Are you sure you want to download:\n\n"+modDownloadName) == 0){
 					//download time!
-					modman.downloadMod(modman.repoPath+modDownloadLink.replace(" ", "%20"), "mods/"+modDownloadLink.substring(modDownloadLink.lastIndexOf("/")+1));
+					modman.downloadMod(modman.repoPath+modDownloadLink.replace(" ", "%20"), "mods/"+modDownloadLink.substring(modDownloadLink.lastIndexOf("/")+1), modDownloadName);
 					int o = 0;
 					for (onlineModDescription i:modman.onlineModList){
 						if (i.link.equals(modDownloadLink)){
@@ -225,14 +234,17 @@ public class GUI extends JFrame {
 				}
 			}});
 		addWindowListener(new java.awt.event.WindowAdapter() {
+			@Override
 			public void windowClosing(WindowEvent winEvt) {
 				System.exit(0);
 			}});
 		GUIexit.addActionListener(new ActionListener(){
+			@Override
 			public void actionPerformed(ActionEvent e) {
 				System.exit(0);
 			}});
 		GUIhelpUser.addActionListener(new ActionListener(){
+			@Override
 			public void actionPerformed(ActionEvent e) {
 				showMessage(
 						"This mod manager is designed to apply mods to Strife.\n"+
@@ -242,6 +254,7 @@ public class GUI extends JFrame {
 						"User help", JOptionPane.PLAIN_MESSAGE);
 			}});
 		GUIhelpDev.addActionListener(new ActionListener(){
+			@Override
 			public void actionPerformed(ActionEvent e) {
 				showMessage(
 						"Directions to making a mod:\n"+
@@ -269,6 +282,7 @@ public class GUI extends JFrame {
 						"Developer help", JOptionPane.PLAIN_MESSAGE);
 			}});
 		GUIhelpAbout.addActionListener(new ActionListener(){
+			@Override
 			public void actionPerformed(ActionEvent e) {
 				showMessage(
 						"Strife ModMan!\n"
@@ -278,10 +292,12 @@ public class GUI extends JFrame {
 						"Developer help", JOptionPane.PLAIN_MESSAGE);
 			}});
 		GUIapplyMods.addActionListener(new ActionListener(){
+			@Override
 			public void actionPerformed(ActionEvent e) {
 				modman.applyMods();
 			}});
 		GUIdevMode.addActionListener(new ActionListener() {
+			@Override
 			public void actionPerformed(ActionEvent event) {
 				modman.isDeveloper = GUIdevMode.isSelected();
 				modman.saveConfig();
@@ -294,6 +310,7 @@ public class GUI extends JFrame {
 		tabbedPane.addTab("Search for mods online", null, panel2, "look for mods");
 
 		tabbedPane.addChangeListener(new ChangeListener(){
+			@Override
 			public void stateChanged(ChangeEvent arg0) {
 				if (table2 == null){
 					modman.populateOnlineModsTable();
@@ -338,14 +355,17 @@ public class GUI extends JFrame {
 	class ModsTableModel extends JTable {
 		private static final long serialVersionUID = 1L;
 
+		@Override
 		public boolean isCellEditable(int row, int column) {
 
 			return column==0?true:false;
 		}
+		@Override
 		public void setValueAt(Object value, int row, int col) {
 			tableData[row][col] = value;
 			getModel().setValueAt(value, row, col);
 		}  
+		@Override
 		public Class<?> getColumnClass(int column) {
 			return getValueAt(0, column).getClass();
 		}

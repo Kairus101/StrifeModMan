@@ -10,7 +10,8 @@ class mod{
 	ArrayList<String> fileNames = new ArrayList<String>();
 	String fileName;
 	String name = "defaultModName";
-	String author = "defaultModName";
+	String author = "defaultModAuthor";
+	String category = "defaultModCategory";
 	String version = "0";
 	String updateLink = null;
 	ImageIcon image = null;
@@ -26,6 +27,6 @@ class mod{
 		modman = mm;
 	}
 	Object[] getData(){
-		return new Object[]{false, image!=null?image:modman.gui.defaultIcon, "<html>"+name+"</html>", author, version};
+		return new Object[]{false, image!=null?image:modman.gui.defaultIcon, "<html>"+name+"</html>", author, version, category};
 	}
 }

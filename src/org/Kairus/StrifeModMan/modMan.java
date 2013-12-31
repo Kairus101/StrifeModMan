@@ -23,6 +23,8 @@ import java.util.zip.ZipOutputStream;
 
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import javax.swing.ProgressMonitor;
+import javax.swing.SwingWorker;
 import javax.swing.table.DefaultTableModel;
 
 import name.fraser.neil.plaintext.diff_match_patch;
@@ -30,7 +32,7 @@ import name.fraser.neil.plaintext.diff_match_patch.Patch;
 
 public class modMan {
 	private static final long serialVersionUID = 1L;
-	String version = "1.07";
+	String version = "1.09";
 
 	boolean reloadMods = false;
 
@@ -38,6 +40,7 @@ public class modMan {
 		new modMan();
 	}
 	GUI gui;
+	downloadsGUI downloadsGui;
 	String s2Path = null;
 	String repoPath = "http://mods.strifehub.com/";
 	String appliedMods = "";
@@ -48,6 +51,7 @@ public class modMan {
 	public modMan()
 	{
 		gui = new GUI(this);
+		downloadsGui = new downloadsGUI(this);
 
 		//update the main program
 		checkForUpdate();
@@ -62,6 +66,7 @@ public class modMan {
 		setModStatuses();
 
 		gui.init();
+		downloadsGui.init();
 
 		if ( mods.size()>0 && gui.showYesNo("Update mods?", "Would you like to update your mods?") == 0){ //0 is yes.
 			//update mods
@@ -89,7 +94,7 @@ public class modMan {
 		}
 		return null;
 	}
-	int archiveNumber = 2;
+	int archiveNumber = 1;
 	void applyMods(){
 		HashMap<String, String> toBeZipped = new HashMap<String, String>();
 		HashMap<String, Boolean> alreadyZipped = new HashMap<String, Boolean>();
@@ -103,7 +108,7 @@ public class modMan {
 			ZipFile zipFile = null;
 			try {
 				zipFile = new ZipFile(output);
-				if ((zipFile.getComment() != null && zipFile.getComment().equals("Long live... ModMan!")) || (archiveNumber==2&&new File(s2Path+"/game/resources"+archiveNumber+".s2z").length()<14000)){
+				if ((zipFile.getComment() != null && zipFile.getComment().equals("Long live... ModMan!")) || new File(s2Path+"/game/resources"+archiveNumber+".s2z").length()<10000){
 					//we've found our guy.
 					zipFile.close();
 					break;
@@ -547,7 +552,7 @@ public class modMan {
 				//we have an update, grab it.
 				if (latestVersion!=null && m.version.compareTo(latestVersion) < 0){
 					updated += m.name + " "+m.version+" -> "+latestVersion+"\n";
-					downloadMod(latestLink, m.fileName);
+					downloadMod(latestLink, m.fileName, m.name);
 					gui.removeFromTable1(mods.indexOf(m));
 					mods.remove(i);
 					i--;
@@ -565,26 +570,8 @@ public class modMan {
 		return updated;
 	}
 
-	void downloadMod(String link, String filename){
-		try {
-			int kbChunks = 1 << 14; //8kb
-			java.io.BufferedInputStream in = new java.io.BufferedInputStream(new java.net.URL(link).openStream());
-			java.io.FileOutputStream fos = new java.io.FileOutputStream(filename);
-			java.io.BufferedOutputStream bout = new BufferedOutputStream(fos,kbChunks*1024);
-			byte[] data = new byte[kbChunks*1024];
-			int x=0;
-			while((x=in.read(data,0,kbChunks*1024))>=0)
-			{
-				bout.write(data,0,x);
-			}
-			bout.flush();
-			bout.close();
-			in.close();
-			mods.add(fileTools.loadModFile(new File(filename), this));
-			gui.addToTable(mods.get(mods.size()-1).getData());
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+	void downloadMod(String link, String filename, String name){
+		downloadsGui.downloadMod(link, filename, name);
 	}
 
 	class simpleStringParser{
