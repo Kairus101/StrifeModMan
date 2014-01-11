@@ -23,8 +23,7 @@ import java.util.zip.ZipOutputStream;
 
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
-import javax.swing.ProgressMonitor;
-import javax.swing.SwingWorker;
+import javax.swing.UIManager;
 import javax.swing.table.DefaultTableModel;
 
 import name.fraser.neil.plaintext.diff_match_patch;
@@ -32,12 +31,17 @@ import name.fraser.neil.plaintext.diff_match_patch.Patch;
 
 public class modMan {
 	private static final long serialVersionUID = 1L;
-	String version = "1.09";
+	String version = "1.12";
 
 	boolean reloadMods = false;
 
 	public static void main(String[] args) {
-		new modMan();
+		if (args.length>0 && args[0].equals("launchStrife")){
+			modMan mm = new modMan();
+			mm.loadFromConfig();
+			mm.launchStrife();
+		}else
+			new modMan().init();
 	}
 	GUI gui;
 	downloadsGUI downloadsGui;
@@ -48,8 +52,26 @@ public class modMan {
 	ArrayList<mod> mods = new ArrayList<mod>();
 	byte[] buffer = new byte[1024];
 
-	public modMan()
-	{
+	public modMan(){}
+	public void init(){
+		try {
+			//UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()); //platform dependent
+			/*
+		    	NimRODTheme nt = new NimRODTheme();
+		    	nt.setPrimary( new Color(205,235,255));
+		    	nt.setSecondary( new Color(235,245,255));
+
+		    	NimRODLookAndFeel NimRODLF = new NimRODLookAndFeel();
+		    	NimRODLF.setCurrentTheme( nt);
+		    	UIManager.setLookAndFeel( NimRODLF);
+			 */
+			UIManager.setLookAndFeel(ch.randelshofer.quaqua.QuaquaManager.getLookAndFeel());
+		} 
+		catch (Exception e) 
+		{
+			e.printStackTrace();
+		}
+
 		gui = new GUI(this);
 		downloadsGui = new downloadsGUI(this);
 
@@ -86,22 +108,25 @@ public class modMan {
 				ZipFile zipFile;
 				zipFile = new ZipFile(s2Path+"/game/resources"+i+".s2z");
 				ZipEntry entry =  zipFile.getEntry(name);
-				if (entry != null)
-					return fileTools.store(zipFile.getInputStream(entry));
+				if (entry != null){
+					String r = fileTools.store(zipFile.getInputStream(entry));
+					zipFile.close();
+					return r;
+				}
+				zipFile.close();
 			}
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
 		return null;
 	}
+
 	int archiveNumber = 1;
-	void applyMods(){
-		HashMap<String, String> toBeZipped = new HashMap<String, String>();
-		HashMap<String, Boolean> alreadyZipped = new HashMap<String, Boolean>();
+	String findOutputFile(){
+		//archiveNumber = 2;
+		//return s2Path+"/game/resources"+archiveNumber+".s2z";
 
-		//toBeZipped.put("modmanPlaceholder", "");
-
-		//lets find out output.
+		archiveNumber = 1;
 		String output = null;
 		while (true){
 			output = s2Path+"/game/resources"+archiveNumber+".s2z";
@@ -113,17 +138,29 @@ public class modMan {
 					zipFile.close();
 					break;
 				}
-			} catch (IOException e) {
-				//perfect. Archive doesn't exist.. yet.
-				break;
-			}
-			try {
 				zipFile.close();
+			} catch (java.io.FileNotFoundException e) {
+				// perfect, doesn't even exist.
+				return output;
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 			archiveNumber++;
 		}
+		return output;
+
+	}
+
+	String output = "";
+
+	void applyMods(){
+		HashMap<String, String> toBeZipped = new HashMap<String, String>();
+		HashMap<String, Boolean> alreadyZipped = new HashMap<String, Boolean>();
+
+		//toBeZipped.put("modmanPlaceholder", "");
+
+		//lets find out output.
+		output = findOutputFile();
 
 		try {
 			FileOutputStream fos = new FileOutputStream(output);
@@ -138,9 +175,9 @@ public class modMan {
 				m.patchesToSave.clear();
 				ZipFile sourceZip = new ZipFile(m.fileName);
 				for (String s: m.fileNames){
-					
+
 					String fileInS2 = findFileInS2(archiveNumber, s);
-					
+
 					//source
 					if (fileInS2==null || m.replaceWithoutPatchCheck){ //new file
 						ZipEntry sourceFile = sourceZip.getEntry(s);
@@ -320,11 +357,7 @@ public class modMan {
 			saveConfig();
 
 			if (gui.showYesNo("Success.", "Mod merge successful.\n\nLaunch Strife") == 0){ //0 is yes.
-				final ArrayList<String> command = new ArrayList<String>();
-				command.add(s2Path+"/bin/strife.exe");
-				final ProcessBuilder builder = new ProcessBuilder(command);
-				builder.start();
-				System.exit(0);
+				launchStrife();
 			}
 
 		} catch (java.io.FileNotFoundException e){
@@ -333,7 +366,95 @@ public class modMan {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
 
+	void launchStrife(){
+		System.out.println("launching strife!");
+		try {
+			if (output == null) output = findOutputFile();
+
+			final ArrayList<String> command = new ArrayList<String>();
+			command.add(s2Path+"/bin/strife.exe");
+			final ProcessBuilder builder = new ProcessBuilder(command);
+			Process p = builder.start();
+			if (gui != null){
+				gui.dispose();
+				gui = null;
+			}
+			if (downloadsGui != null){
+				downloadsGui.dispose();
+				downloadsGui = null;
+			}
+			mods = null;
+			onlineModList = null;
+			System.gc();
+
+			//wait for the program to close.
+			Thread.currentThread().setPriority(Thread.MIN_PRIORITY);
+			System.out.println("waiting for strife to close.");
+			p.waitFor();
+			System.out.println("closed! ok, gonna check for the updater..");
+			Thread.currentThread().setPriority(Thread.NORM_PRIORITY);
+
+			long startTime = System.currentTimeMillis();
+			//ok, now that it is closed, lets wait for the updater, and remove our files while it does it's thing..
+			boolean updating = false;
+			while (System.currentTimeMillis() <  startTime + 10000 && !updating) { //10 secs of waiting.. slow systems, you know?
+				try {
+					String line;
+					Process p2 = Runtime.getRuntime().exec
+					(System.getenv("windir") +"\\system32\\"+"tasklist.exe");
+					BufferedReader input = new BufferedReader(new InputStreamReader(p2.getInputStream()));
+					while ((line = input.readLine()) != null) {
+						if (line.startsWith("updater.exe")){
+							//BOOM! NOT TODAY SCUMBAG!
+							System.out.println("FOUND IT!");
+							updating = true;
+							break;
+						}
+					}
+					input.close();
+					if (!updating)
+						Thread.sleep(250);//only run 4 times a second
+				} catch (Exception err) {
+					err.printStackTrace();
+				}
+			}
+			if (updating){
+				System.out.println("Renaming "+output+" to "+output+".tmpFile");
+				new File(output).renameTo(new File(output+".tmpFile"));
+
+				System.out.println("Waiting for it to finish updating.");
+				boolean stillUpdating = true;
+				while (stillUpdating){
+					stillUpdating = false;
+					try {
+						String line;
+						Process p2 = Runtime.getRuntime().exec
+						(System.getenv("windir") +"\\system32\\"+"tasklist.exe");
+						BufferedReader input = new BufferedReader(new InputStreamReader(p2.getInputStream()));
+						while ((line = input.readLine()) != null) {
+							if (line.startsWith("updater.exe")){
+								//BOOM! NOT TODAY SCUMBAG!
+								stillUpdating = true;
+								break;
+							}
+						}
+						input.close();
+						if (stillUpdating)
+							Thread.sleep(250);//only run 4 times a second
+					} catch (Exception err) {
+						err.printStackTrace();
+					}
+				}
+				System.out.println("putting it back to normal!");
+				new File(output+".tmpFile").renameTo(new File(findOutputFile()));
+			}else
+				System.out.println("Timed out..");
+		}catch(InterruptedException e){} catch (IOException e) {
+			e.printStackTrace();
+		}
+		System.exit(0);
 	}
 
 	public void addFileIfNotAdded(HashMap<String, String> toBeZipped, String file) throws IOException{
@@ -573,6 +694,7 @@ public class modMan {
 	void downloadMod(String link, String filename, String name){
 		downloadsGui.downloadMod(link, filename, name);
 	}
+
 
 	class simpleStringParser{
 		String text;

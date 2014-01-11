@@ -10,7 +10,6 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
-import javax.swing.JSeparator;
 import javax.swing.SwingWorker;
 
 public class downloadsGUI extends JFrame {
@@ -35,7 +34,6 @@ public class downloadsGUI extends JFrame {
         task.execute();
         panel.add(task.label);
         panel.add(task.bar);
-        panel.add(task.separator);
 		downloading.add(task);
 		refresh();
 	}
@@ -44,7 +42,6 @@ public class downloadsGUI extends JFrame {
 	private class downloadMod extends SwingWorker<Void, Void> {
 		JLabel label;
 		JProgressBar bar = new JProgressBar(JProgressBar.HORIZONTAL, 0, 100);
-		JSeparator separator = new JSeparator(JSeparator.HORIZONTAL);
 		String filename = null;
 		String link = null;
 		modMan parent = null;
@@ -94,7 +91,6 @@ public class downloadsGUI extends JFrame {
         	parent2.downloading.remove(this);
         	parent2.panel.remove(bar);
         	parent2.panel.remove(label);
-        	parent2.panel.remove(separator);
         	parent2.refresh();
         }
     }

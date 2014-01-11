@@ -7,6 +7,11 @@ import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowEvent;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.regex.Pattern;
 
@@ -23,13 +28,12 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JSeparator;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.RowFilter;
-import javax.swing.UIManager;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.event.DocumentEvent;
@@ -50,9 +54,11 @@ public class GUI extends JFrame {
 	JMenu GUImenu = new JMenu("File");
 	JMenu GUIsettings = new JMenu("Settings");
 	JMenu GUIhelp = new JMenu("Help");
+	JMenuItem GUIcreateBat = new JMenuItem("Create Strife launcher");
 	JMenuItem GUIhelpUser = new JMenuItem("User Help");
 	JMenuItem GUIhelpDev = new JMenuItem("Developer Help");
 	JMenuItem GUIhelpAbout = new JMenuItem("About");
+	JMenuItem GUIhelpChangeLog = new JMenuItem("Change Log");
 	JMenuItem GUIexit = new JMenuItem("Exit");
 	JLabel GUImodName = new JLabel("");
 	JLabel GUImodAuthor = new JLabel("");
@@ -104,38 +110,25 @@ public class GUI extends JFrame {
 		modman = mm;
 	}
 	public void init(){
-		showMessage("Warning!\nThis modman is still in beta!\nBefore you update your strife, disable all mods,\nor they will be permanently in your game!\nI'm talking with S2 to resolve this bug.", "Warning", 0);
-		try {
-			/*
-			for (LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
-		        if ("Nimbus".equals(info.getName())) {
-		            UIManager.setLookAndFeel(info.getClassName());
-		            break;
-		        }
-		    }
-			*/
-			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()); //platform dependent
-			//UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName()); //default
-			//UIManager.setLookAndFeel("com.sun.java.swing.plaf.motif.MotifLookAndFeel"); //odd looking.
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		showMessage("Warning!\nStrife updates may make mods permanent unless you are using windows and launch strife using this program, or the .bat it creates in File->Create Strife launcher!", "Warning", 0);
 		// layout
 		setLayout(new BorderLayout());
 		panel1.setLayout(new BorderLayout());
 		panel2.setLayout(new BorderLayout());
 
 		// menu
+		GUImenu.add(GUIcreateBat);
 		GUImenu.add(GUIexit);
 		GUImenuBar.add(GUImenu);
 
 		GUIdevMode.setSelected(modman.isDeveloper);
 		GUIsettings.add(GUIdevMode);
 		GUImenuBar.add(GUIsettings);
-
+		
 		GUIhelp.add(GUIhelpUser);
 		GUIhelp.add(GUIhelpDev);
 		GUIhelp.add(GUIhelpAbout);
+		GUIhelp.add(GUIhelpChangeLog);
 		GUImenuBar.add(GUIhelp);
 
 		add(GUImenuBar, BorderLayout.NORTH);
@@ -152,6 +145,7 @@ public class GUI extends JFrame {
 		table.setPreferredScrollableViewportSize(new Dimension(200, 70));
 		table.setFillsViewportHeight(true);
 		table.getColumnModel().getColumn(2).setMinWidth(150);
+		table.getColumnModel().getColumn(1).setMaxWidth(55);
 		table.removeColumn(table.getColumnModel().getColumn(5));
 		JScrollPane modPanel = new JScrollPane(table);
 		panel1.add(modPanel, BorderLayout.CENTER);
@@ -160,10 +154,8 @@ public class GUI extends JFrame {
 		JPanel infoPanel = new JPanel();
 		infoPanel.add(new JLabel("Mod name: "));
 		infoPanel.add(GUImodName);
-		infoPanel.add(new JSeparator());
 		infoPanel.add(new JLabel("Mod author: "));
 		infoPanel.add(GUImodAuthor);
-		infoPanel.add(new JSeparator());
 		infoPanel.add(new JLabel("Mod version: "));
 		infoPanel.add(GUImodVersion);
 		infoPanel.setPreferredSize(new Dimension(150,0));
@@ -243,6 +235,18 @@ public class GUI extends JFrame {
 			public void actionPerformed(ActionEvent e) {
 				System.exit(0);
 			}});
+		GUIcreateBat.addActionListener(new ActionListener(){
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				try {
+					PrintWriter pr = new PrintWriter(new File("launch Strife.bat"));
+					pr.println("start java -jar modManager.jar launchStrife");
+					pr.close();
+					showMessage("Created "+new File("launch Strife.bat").getAbsolutePath()+", this must stay next to modManager.jar, but you can create shortcuts from it or pin it to your taskbar! Using it or this program will ensure strife updates don't make mods permanent!");
+				} catch (FileNotFoundException e2) {
+					e2.printStackTrace();
+				}
+			}});
 		GUIhelpUser.addActionListener(new ActionListener(){
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -302,6 +306,87 @@ public class GUI extends JFrame {
 				modman.isDeveloper = GUIdevMode.isSelected();
 				modman.saveConfig();
 			}});
+		GUIhelpChangeLog.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent event) {
+				final JFrame popup = new JFrame();
+				popup.setSize(600, 500);
+				JTextArea changes = new JTextArea();
+				popup.setTitle("ModManager ChangeLog");
+				changes.setText(
+						"Version 1.12\n" +
+						"  Made strife update not break everything so long as you are on windows and you start it using the program.\n" +
+						"\n" +
+						"-------------------------------------------\n" +
+						"Version 1.1\n" +
+						"  Added this changelog.\n" +
+						"  Changed the look and feel of modMan to be smoother.\n" +
+						"  This makes the .jar size ~25x larger, so we will see.\n" +
+						"\n" +
+						"-------------------------------------------\n" +
+						"Version 1.09\n" +
+						"  Now filters mods by category.\n" +
+						"  Now downloads mods using a gui which is much more responsive than previously.\n" +
+						"  Added a warning message on startup - that the modman is still in beta, and strife updates can break.\n" +
+						"\n" +
+						"-------------------------------------------\n" +
+						"Version 1.08\n" +
+						"  Modman now scans S2 archives in a top-down order, like Strife, as opposed to simply using 0.\n" +
+						"\n" +
+						"-------------------------------------------\n" +
+						"Version 1.07\n" +
+						"  Applied mods once more stay enabled.\n" +
+						"  Updated mods no longer add another entry to the table.\n" +
+						"\n" +
+						"-------------------------------------------\n" +
+						"Version 1.06\n" +
+						"  Applied mods once more stay enabled.\n" +
+						"  Updated mods no longer add another entry to the table.\n" +
+						"  Fixed small bug w.r.t the table after a mod update\n" +
+						"\n" +
+						"-------------------------------------------\n" +
+						"Version 1.05\n" +
+						"  Added to GUI help popups\n" +
+						"  No longer only uses resources2.s2z\n" +
+						"  Took out rare but pointless println.\n" +
+						"\n" +
+						"-------------------------------------------\n" +
+						"Version 1.04\n" +
+						"  Added filter text boxes to filter out entries.\n" +
+						"  Changed look and feel to 'native'.\n" +
+						"  Changed the image icons to be square.\n" +
+						"  Added 'replacewithoutpatchcheck', for when you simply want to replace files without using patches. i.e model swaps.\n" +
+						"  Made descriptions/names appear on multiple lines.\n" +
+						"\n" +
+						"-------------------------------------------\n" +
+						"Version 1.03\n" +
+						"  Modman can now go online to find, download, and install mods.\n" +
+						"  No longer shows some unnecessary messages.\n" +
+						"  More aware when updates fail. (Main program and mods)\n" +
+						"  Updated for use with strife.\n" +
+						"\n" +
+						"-------------------------------------------\n" +
+						"Version 1.02\n" +
+						"  Modman now asks if you want to launch strife\n" +
+						"  Modman now auto-updates\n" +
+						"  Mods now auto update\n" +
+						"\n" +
+						"-------------------------------------------\n" +
+						"Version 1.01\n" +
+						"  Re-arranged cells\n" +
+						"  Made name cell longer\n" +
+						"  Reformatted diff_match_patch\n" +
+						"  Program now remembers applied mods\n" +
+						"  Fixed a bug with making official mod file\n" +
+						"  Added spritesheet.png\n" +
+						"\n" +
+						"-------------------------------------------\n" +
+						"Version 1\n" +
+						"  Initial commit. Things are working alright."
+				);
+				popup.add(new JScrollPane(changes));
+				popup.setVisible(true);
+			}});
 
 		pack();
 
@@ -317,7 +402,7 @@ public class GUI extends JFrame {
 					modman.purgeOnlineModsTable();
 
 					makeTable2Data();
-					
+
 					String[] columnNames = {"Name", "Rating", "Author", "Catagory", "Description"};
 					table2 = new OnlineModsTableModel(new DefaultTableModel(table2Data, columnNames));
 					sorter2 = new TableRowSorter<DefaultTableModel>((DefaultTableModel) table2.getModel());
