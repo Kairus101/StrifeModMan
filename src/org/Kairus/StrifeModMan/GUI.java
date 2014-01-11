@@ -240,7 +240,7 @@ public class GUI extends JFrame {
 			public void actionPerformed(ActionEvent e) {
 				try {
 					PrintWriter pr = new PrintWriter(new File("launch Strife.bat"));
-					pr.println("start java -jar modManager.jar launchStrife");
+					pr.println("start javaw -jar modManager.jar launchStrife");
 					pr.close();
 					showMessage("Created "+new File("launch Strife.bat").getAbsolutePath()+", this must stay next to modManager.jar, but you can create shortcuts from it or pin it to your taskbar! Using it or this program will ensure strife updates don't make mods permanent!");
 				} catch (FileNotFoundException e2) {

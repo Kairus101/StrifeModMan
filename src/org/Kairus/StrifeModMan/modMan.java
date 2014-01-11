@@ -151,7 +151,7 @@ public class modMan {
 
 	}
 
-	String output = "";
+	String output = null;
 
 	void applyMods(){
 		HashMap<String, String> toBeZipped = new HashMap<String, String>();
