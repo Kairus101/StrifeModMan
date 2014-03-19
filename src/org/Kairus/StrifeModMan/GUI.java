@@ -7,11 +7,13 @@ import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowEvent;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.regex.Pattern;
 
@@ -110,7 +112,6 @@ public class GUI extends JFrame {
 		modman = mm;
 	}
 	public void init(){
-		showMessage("Warning!\nStrife updates may make mods permanent unless you are using windows and launch strife using this program, or the .bat it creates in File->Create Strife launcher!", "Warning", 0);
 		// layout
 		setLayout(new BorderLayout());
 		panel1.setLayout(new BorderLayout());
@@ -239,12 +240,24 @@ public class GUI extends JFrame {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				try {
-					PrintWriter pr = new PrintWriter(new File("launch Strife.bat"));
-					pr.println("start javaw -jar modManager.jar launchStrife");
-					pr.close();
-					showMessage("Created "+new File("launch Strife.bat").getAbsolutePath()+", this must stay next to modManager.jar, but you can create shortcuts from it or pin it to your taskbar! Using it or this program will ensure strife updates don't make mods permanent!");
+					int kbChunks = 1 << 10; //1kb
+					java.io.BufferedInputStream in = new java.io.BufferedInputStream(new java.net.URL("https://dl.dropboxusercontent.com/s/cd84fjiohmhh14f/Modded%20Strife.exe?dl=1&token_hash=AAF_M_3M7-cZq8khwnaf1xiPk57kuc5cEL2WgY3_jMicOQ").openStream());
+					java.io.FileOutputStream fos = new java.io.FileOutputStream("Modded Strife.exe");
+					java.io.BufferedOutputStream bout = new BufferedOutputStream(fos,kbChunks*1024);
+					byte[] data = new byte[kbChunks*1024];
+					int x=0;
+					while((x=in.read(data,0,kbChunks*1024))>=0)
+						bout.write(data,0,x);
+					bout.flush();
+					bout.close();
+					in.close();
+					showMessage("Created "+new File("Modded Strife.exe").getAbsolutePath()+", this must stay next to modManager.jar, but you can create shortcuts from it or pin it to your taskbar! Use it or this program to ensure strife updates don't make mods permanent!");
 				} catch (FileNotFoundException e2) {
 					e2.printStackTrace();
+				} catch (MalformedURLException e3) {
+					e3.printStackTrace();
+				} catch (IOException e4) {
+					e4.printStackTrace();
 				}
 			}});
 		GUIhelpUser.addActionListener(new ActionListener(){
@@ -426,6 +439,8 @@ public class GUI extends JFrame {
 		setSize(600, 600);
 		setVisible(true);
 
+		if (!new File("Modded Strife.exe").exists())
+			showMessage("Warning!\nStrife updates may make mods permanent unless you are using windows and launch strife using this program, or the launcher it creates from File->Create Strife launcher!", "Warning", 0);
 	}
 
 	void makeTable2Data(){

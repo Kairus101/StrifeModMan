@@ -31,7 +31,7 @@ import name.fraser.neil.plaintext.diff_match_patch.Patch;
 
 public class modMan {
 	private static final long serialVersionUID = 1L;
-	String version = "1.12";
+	String version = "1.14";
 
 	boolean reloadMods = false;
 
@@ -178,8 +178,9 @@ public class modMan {
 
 					String fileInS2 = findFileInS2(archiveNumber, s);
 
+					ZipEntry patchFile = sourceZip.getEntry("patch_"+s);//patch
 					//source
-					if (fileInS2==null || m.replaceWithoutPatchCheck){ //new file
+					if (fileInS2==null || (m.replaceWithoutPatchCheck && patchFile == null)){ //new file
 						ZipEntry sourceFile = sourceZip.getEntry(s);
 						InputStream zis = sourceZip.getInputStream(sourceFile);
 
@@ -364,6 +365,7 @@ public class modMan {
 			e.printStackTrace();
 			gui.showMessage("Failure, archive open or non-existant\nAre you running Strife? Close it.\nHave you got a mod/resource file open? Close it.", "Failed to open files warning", JOptionPane.ERROR_MESSAGE);
 		} catch (IOException e) {
+			gui.showMessage("Failure, archive open or non-existant\nAre you running Strife? Close it.\nHave you got a mod/resource file open? Close it.", "Failed to open files warning", JOptionPane.ERROR_MESSAGE);
 			e.printStackTrace();
 		}
 	}
