@@ -8,6 +8,7 @@ import javax.swing.ImageIcon;
 
 class mod{
 	ArrayList<String> fileNames = new ArrayList<String>();
+	ArrayList<String> requirements = new ArrayList<String>();
 	String fileName;
 	String name = "defaultModName";
 	String author = "defaultModAuthor";

@@ -48,9 +48,13 @@ public class modMan {
 	String s2Path = null;
 	String repoPath = "http://mods.strifehub.com/";
 	String appliedMods = "";
+	ArrayList<mod> appliedModsList = new ArrayList<mod>();
 	boolean isDeveloper = false;
 	ArrayList<mod> mods = new ArrayList<mod>();
 	byte[] buffer = new byte[1024];
+
+	HashMap<String, String> toBeZipped = new HashMap<String, String>();
+	HashMap<String, Boolean> alreadyZipped = new HashMap<String, Boolean>();
 
 	public modMan(){}
 	public void init(){
@@ -153,150 +157,201 @@ public class modMan {
 
 	String output = null;
 
+	boolean applyMod(mod m, ZipOutputStream zos, ArrayList<mod> modsToApply) throws java.io.IOException
+	{
+		for(String requirement : m.requirements)
+		{
+			boolean requirementFound = false;
+			for(mod appliedMod : this.appliedModsList)
+			{
+				if (requirement.toLowerCase().equals(appliedMod.name.toLowerCase()))
+				{
+					requirementFound = true;
+					break;
+				}
+			}
+			if(!requirementFound)
+			{
+				for(mod modToApply : modsToApply)
+				{
+					if (requirement.toLowerCase().equals(modToApply.name.toLowerCase()))
+					{
+						requirementFound = applyMod(modToApply, zos, modsToApply);
+						break;
+					}
+				}
+			}
+			if(!requirementFound)
+			{
+				gui.showMessage("Cannot apply mod " + m.name + ": required mod " + requirement + " not found.");
+				return false;
+			}
+		}
+
+		appliedMods += m.name+"|";
+		m.patchesToSave.clear();
+		ZipFile sourceZip = new ZipFile(m.fileName);
+		for (String s: m.fileNames){
+
+			String fileInS2 = findFileInS2(archiveNumber, s);
+
+			//source
+			if (fileInS2==null || m.replaceWithoutPatchCheck){ //new file
+				ZipEntry sourceFile = sourceZip.getEntry(s);
+				InputStream zis = sourceZip.getInputStream(sourceFile);
+
+				//output
+				if (alreadyZipped.get(s) != null){
+					gui.showMessage("Warning ("+m.name+"): Duplicate file with no originals:\n");
+					continue;
+				}
+				alreadyZipped.put(s, true);
+				ZipEntry ze = new ZipEntry(s);
+				zos.putNextEntry(ze);
+
+				int len;
+				while ((len = zis.read(buffer)) > 0) {
+					zos.write(buffer, 0, len);
+				}
+				zis.close();
+				zos.closeEntry();
+			}else{
+				//we need to perform a diff.
+				//step 1, check for a patch file, if so, skip to step 3
+				//step 2, check for original files, if so, make patches
+				//step 3, apply patch to current file.
+				//step 4, apply any xml modifications.
+				//step 5, put new file in resources
+
+				//setup
+				diff_match_patch differ = new diff_match_patch();
+				LinkedList<Patch> patch = null;
+				String current = "";
+
+				if (toBeZipped.get(s) != null){ // not the first mod
+					current = toBeZipped.get(s);
+				}else
+					current = fileInS2; //current
+
+				//step 1
+				//check for a patch file, if so, skip to step 3
+				String potentialPatch = m.patches.get(s);
+				if (potentialPatch != null){ //We have a patch! continuing
+					patch = (LinkedList<Patch>)differ.patch_fromText(potentialPatch);
+				}else{ //no patch, check for original files
+					//step 2
+					//check for original files, if so, make patches and update mod later
+					ZipEntry sourceFile = sourceZip.getEntry("original/"+s);//original
+					if (sourceFile == null){
+						gui.showMessage("Problem in "+m.name+"!\n"+s+"\nFound in resources0, but no patch and no original file.\nIf you are developing this mod, put the official file in your mod pack, under \"original/"+s+"\".");
+						continue;
+					}
+
+					InputStream zis = sourceZip.getInputStream(sourceFile);//original
+					String original = fileTools.store(zis); //original
+					sourceFile = sourceZip.getEntry(s);//modified
+					zis = sourceZip.getInputStream(sourceFile);//modified
+					String modified = fileTools.store(zis); //modified
+
+					LinkedList<diff_match_patch.Diff> diffs1 = differ.diff_main(original, modified);
+					patch = differ.patch_make(original, diffs1);
+
+					if (isDeveloper){
+						String patchText = differ.patch_toText(patch);
+						m.patchesToSave.put(s, patchText);
+					}
+				}
+
+				//step 3
+				//apply patch to current file.
+				Object[] result = differ.patch_apply(patch, current);
+				boolean good = true;
+				int error = 0;
+				for (error = 0; error < ((boolean[])result[1]).length;error++)
+					if (!((boolean[])result[1])[error]){
+						good=false;
+						break;
+					}
+				if (!good){
+					gui.showMessage("Problem in "+m.name+":"+s+"\nApplying diff: "+patch.get(error));
+					continue;
+				}
+				toBeZipped.remove(s);
+				toBeZipped.put(s, (String)result[0]);
+
+			}
+		}
+		sourceZip.close();
+		if (m.patchesToSave.size() > 0){
+			int n = gui.showYesNo("Compress", "Save new official strifemod?");
+			if (n==0){
+				String[] filesToDelete = new String[2*m.patchesToSave.size()+1];
+				filesToDelete[2*m.patchesToSave.size()] = "original/";
+				String[] filesToAdd = new String[m.patchesToSave.size()];
+				String[] content = new String[m.patchesToSave.size()];
+				int i = 0;
+				Iterator<?> it = m.patchesToSave.entrySet().iterator();
+				while (it.hasNext()) {
+					@SuppressWarnings("unchecked")
+					Map.Entry<String, String> pairs = (Map.Entry<String, String>)it.next();		        
+					filesToDelete[2*i] = pairs.getKey();
+					filesToDelete[2*i+1] = "original/"+pairs.getKey();
+					filesToAdd[i] = "patch_"+pairs.getKey();
+					content[i] = pairs.getValue();
+					it.remove(); // avoids a ConcurrentModificationException
+					i++;
+				}
+				fileTools.remakeZipEntry(m.name+"_official.strifemod", new File(m.fileName), filesToDelete, filesToAdd, content);
+				gui.showMessage("Created official mod at: "+new File(m.name+"_official.strifemod").getAbsolutePath());
+			}
+		}
+		appliedModsList.add(m);
+		return true;
+	}
+
+
 	void applyMods(){
-		HashMap<String, String> toBeZipped = new HashMap<String, String>();
-		HashMap<String, Boolean> alreadyZipped = new HashMap<String, Boolean>();
+		toBeZipped.clear();
+		alreadyZipped.clear();
 
 		//toBeZipped.put("modmanPlaceholder", "");
 
 		//lets find out output.
 		output = findOutputFile();
 
+		boolean success = true;
+
 		try {
 			FileOutputStream fos = new FileOutputStream(output);
 			ZipOutputStream zos = new ZipOutputStream(fos);
 			zos.setComment("Long live... ModMan!");
 			appliedMods = "";
+			this.appliedModsList.clear();
 			int o = 0;
-			for (mod m: mods){
-				if ((Boolean)gui.tableData[o++][0] == false)
-					continue;
-				appliedMods += m.name+"|";
-				m.patchesToSave.clear();
-				ZipFile sourceZip = new ZipFile(m.fileName);
-				for (String s: m.fileNames){
-
-					String fileInS2 = findFileInS2(archiveNumber, s);
-
-					ZipEntry patchFile = sourceZip.getEntry("patch_"+s);//patch
-					//source
-					if (fileInS2==null || (m.replaceWithoutPatchCheck && patchFile == null)){ //new file
-						ZipEntry sourceFile = sourceZip.getEntry(s);
-						InputStream zis = sourceZip.getInputStream(sourceFile);
-
-						//output
-						if (alreadyZipped.get(s) != null){
-							gui.showMessage("Warning ("+m.name+"): Duplicate file with no originals:\n");
-							continue;
-						}
-						alreadyZipped.put(s, true);
-						ZipEntry ze = new ZipEntry(s);
-						zos.putNextEntry(ze);
-
-						int len;
-						while ((len = zis.read(buffer)) > 0) {
-							zos.write(buffer, 0, len);
-						}
-						zis.close();
-						zos.closeEntry();
-					}else{
-						//we need to perform a diff.
-						//step 1, check for a patch file, if so, skip to step 3
-						//step 2, check for original files, if so, make patches
-						//step 3, apply patch to current file.
-						//step 4, apply any xml modifications.
-						//step 5, put new file in resources
-
-						//setup
-						diff_match_patch differ = new diff_match_patch();
-						LinkedList<Patch> patch = null;
-						String current;
-
-						if (toBeZipped.get(s) != null){ // not the first mod
-							current = toBeZipped.get(s);
-						}else
-							current = fileInS2; //current
-
-						//step 1
-						//check for a patch file, if so, skip to step 3
-						String potentialPatch = m.patches.get(s);
-						if (potentialPatch != null){ //We have a patch! continuing
-							patch = (LinkedList<Patch>)differ.patch_fromText(potentialPatch);
-						}else{ //no patch, check for original files
-							//step 2
-							//check for original files, if so, make patches and update mod later
-							ZipEntry sourceFile = sourceZip.getEntry("original/"+s);//original
-							if (sourceFile == null){
-								gui.showMessage("Problem in "+m.name+"!\n"+s+"\nFound in resources0, but no patch and no original file.\nIf you are developing this mod, put the official file in your mod pack, under \"original/"+s+"\".");
-								continue;
-							}
-
-							InputStream zis = sourceZip.getInputStream(sourceFile);//original
-							String original = fileTools.store(zis); //original
-							sourceFile = sourceZip.getEntry(s);//modified
-							zis = sourceZip.getInputStream(sourceFile);//modified
-							String modified = fileTools.store(zis); //modified
-
-							LinkedList<diff_match_patch.Diff> diffs1 = differ.diff_main(original, modified);
-							patch = differ.patch_make(original, diffs1);
-
-							if (isDeveloper){
-								String patchText = differ.patch_toText(patch);
-								m.patchesToSave.put(s, patchText);
-							}
-						}
-
-						//step 3
-						//apply patch to current file.
-						Object[] result = differ.patch_apply(patch, current);
-						boolean good = true;
-						int error = 0;
-						for (error = 0; error < ((boolean[])result[1]).length;error++)
-							if (!((boolean[])result[1])[error]){
-								good=false;
-								break;
-							}
-						if (!good){
-							gui.showMessage("Problem in "+m.name+":"+s+"\nApplying diff: "+patch.get(error));
-							continue;
-						}
-						toBeZipped.remove(s);
-						toBeZipped.put(s, (String)result[0]);
-
-					}
+			ArrayList<mod> modsToApply = new ArrayList<mod>();
+			for (mod m: mods)
+			{
+				if ((Boolean)gui.tableData[o++][0] == true)
+				{
+					modsToApply.add(m);
 				}
-				sourceZip.close();
-				if (m.patchesToSave.size() > 0){
-					int n = gui.showYesNo("Compress", "Save new official strifemod?");
-					if (n==0){
-						String[] filesToDelete = new String[2*m.patchesToSave.size()+1];
-						filesToDelete[2*m.patchesToSave.size()] = "original/";
-						String[] filesToAdd = new String[m.patchesToSave.size()];
-						String[] content = new String[m.patchesToSave.size()];
-						int i = 0;
-						Iterator<?> it = m.patchesToSave.entrySet().iterator();
-						while (it.hasNext()) {
-							@SuppressWarnings("unchecked")
-							Map.Entry<String, String> pairs = (Map.Entry<String, String>)it.next();		        
-							filesToDelete[2*i] = pairs.getKey();		        
-							filesToDelete[2*i+1] = "original/"+pairs.getKey();
-							filesToAdd[i] = "patch_"+pairs.getKey();
-							content[i] = pairs.getValue();
-							it.remove(); // avoids a ConcurrentModificationException
-							i++;
-						}
-						fileTools.remakeZipEntry(m.name+"_official.strifemod", new File(m.fileName), filesToDelete, filesToAdd, content);
-						gui.showMessage("Created official mod at: "+new File(m.name+"_official.strifemod").getAbsolutePath());
+			}
+
+			for (mod m: modsToApply)
+			{
+				if(this.appliedModsList.lastIndexOf(m) == -1)
+				{
+					if(!applyMod(m, zos, modsToApply))
+					{
+						success = false;
+						break;
 					}
 				}
 			}
 
 			//step 4
 			//apply any xml modifications.
-			o = 0;
-			for (mod m: mods){
-				if ((Boolean)gui.tableData[o++][0] == false)
-					continue;
+			for (mod m: modsToApply){
 
 				//System.out.println("looking for modifications: "+m.name);
 				simpleStringParser parser = new simpleStringParser(m.xmlModifications.toString());
@@ -357,7 +412,7 @@ public class modMan {
 			zos.close();
 			saveConfig();
 
-			if (gui.showYesNo("Success.", "Mod merge successful.\n\nLaunch Strife") == 0){ //0 is yes.
+			if (success && gui.showYesNo("Success.", "Mod merge successful.\n\nLaunch Strife") == 0){ //0 is yes.
 				launchStrife();
 			}
 
@@ -365,7 +420,6 @@ public class modMan {
 			e.printStackTrace();
 			gui.showMessage("Failure, archive open or non-existant\nAre you running Strife? Close it.\nHave you got a mod/resource file open? Close it.", "Failed to open files warning", JOptionPane.ERROR_MESSAGE);
 		} catch (IOException e) {
-			gui.showMessage("Failure, archive open or non-existant\nAre you running Strife? Close it.\nHave you got a mod/resource file open? Close it.", "Failed to open files warning", JOptionPane.ERROR_MESSAGE);
 			e.printStackTrace();
 		}
 	}
