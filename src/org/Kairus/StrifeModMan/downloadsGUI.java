@@ -28,7 +28,7 @@ public class downloadsGUI extends JFrame {
 		setVisible(false);
 	}
 	
-	public void downloadMod(String link, String filename, String name){
+	public downloadMod downloadMod(String link, String filename, String name){
 		downloadMod task = new downloadMod(link, filename, parent, this);
 		task.label = new JLabel(name);
         task.execute();
@@ -36,10 +36,11 @@ public class downloadsGUI extends JFrame {
         panel.add(task.bar);
 		downloading.add(task);
 		refresh();
+		return task;
 	}
 	
 
-	private class downloadMod extends SwingWorker<Void, Void> {
+	public class downloadMod extends SwingWorker<Void, Void> {
 		JLabel label;
 		JProgressBar bar = new JProgressBar(JProgressBar.HORIZONTAL, 0, 100);
 		String filename = null;

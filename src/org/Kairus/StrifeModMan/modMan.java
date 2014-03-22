@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
+import java.util.LinkedHashSet;
 
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
@@ -157,37 +158,8 @@ public class modMan {
 
 	String output = null;
 
-	boolean applyMod(mod m, ZipOutputStream zos, ArrayList<mod> modsToApply) throws java.io.IOException
+	boolean applyMod(mod m, ZipOutputStream zos) throws java.io.IOException
 	{
-		for(String requirement : m.requirements)
-		{
-			boolean requirementFound = false;
-			for(mod appliedMod : this.appliedModsList)
-			{
-				if (requirement.toLowerCase().equals(appliedMod.name.toLowerCase()))
-				{
-					requirementFound = true;
-					break;
-				}
-			}
-			if(!requirementFound)
-			{
-				for(mod modToApply : modsToApply)
-				{
-					if (requirement.toLowerCase().equals(modToApply.name.toLowerCase()))
-					{
-						requirementFound = applyMod(modToApply, zos, modsToApply);
-						break;
-					}
-				}
-			}
-			if(!requirementFound)
-			{
-				gui.showMessage("Cannot apply mod " + m.name + ": required mod " + requirement + " not found.");
-				return false;
-			}
-		}
-
 		appliedMods += m.name+"|";
 		m.patchesToSave.clear();
 		ZipFile sourceZip = new ZipFile(m.fileName);
@@ -309,8 +281,65 @@ public class modMan {
 		return true;
 	}
 
+	LinkedHashSet<mod> arrangeRequirements(mod Mod)
+	{
+		LinkedHashSet<mod> returnArray = new LinkedHashSet<mod>();
+		for(String requirement : Mod.requirements)
+		{
+			boolean requirementFound = false;
+			for(mod m : this.mods)
+			{
+				if(!m.equals(Mod) && m.name.toLowerCase().equals(requirement.toLowerCase()))
+				{
+					requirementFound = true;
+					returnArray.addAll(arrangeRequirements(m));
+				}
+			}
+			if(!requirementFound)
+			{
+				//internet
+				for(onlineModDescription m : this.onlineModList)
+				{
+					if(m.name.toLowerCase().equals(requirement.toLowerCase()))
+					{
+						requirementFound = true;
+						downloadsGUI.downloadMod modDownload = downloadMod((repoPath + m.link).replace(" ", "%20"), System.getProperty("user.dir") + "/mods/" + m.name + ".strifemod", m.name);
+						try
+						{
+							//Wait for the download to complete
+							modDownload.get();
+						}
+						catch(Exception e)
+						{
+							System.out.println(e);
+						}
+						File modFile = new File(System.getProperty("user.dir") + "/mods/" + m.name + ".strifemod");
+						if(modFile.exists())
+						{
+							mod newMod = fileTools.loadModFile(modFile, this);
+							returnArray.add(newMod);
+							this.gui.tableData[this.gui.tableData.length - 1][0] = true;
+						}
+						break;
+					}
+				}
+			}
+			if(!requirementFound)
+			{
+				//Panic?
+				//return empty list to not apply this mod nor any of its requirements?
+				this.gui.showMessage("Could not find mod " + requirement + " requirement for " + Mod.name);
+			}
+		}
+		returnArray.add(Mod);
+
+		return returnArray;
+	}
 
 	void applyMods(){
+
+		populateOnlineModsTable();
+
 		toBeZipped.clear();
 		alreadyZipped.clear();
 
@@ -328,24 +357,22 @@ public class modMan {
 			appliedMods = "";
 			this.appliedModsList.clear();
 			int o = 0;
-			ArrayList<mod> modsToApply = new ArrayList<mod>();
-			for (mod m: mods)
+			LinkedHashSet<mod> modsToApply = new LinkedHashSet<mod>();
+			ArrayList<mod> currentMods = new ArrayList<mod>(this.mods);
+			for (mod m: currentMods)
 			{
 				if ((Boolean)gui.tableData[o++][0] == true)
 				{
-					modsToApply.add(m);
+					modsToApply.addAll(arrangeRequirements(m));
 				}
 			}
 
 			for (mod m: modsToApply)
 			{
-				if(this.appliedModsList.lastIndexOf(m) == -1)
+				if(!applyMod(m, zos))
 				{
-					if(!applyMod(m, zos, modsToApply))
-					{
-						success = false;
-						break;
-					}
+					success = false;
+					break;
 				}
 			}
 
@@ -747,8 +774,8 @@ public class modMan {
 		return updated;
 	}
 
-	void downloadMod(String link, String filename, String name){
-		downloadsGui.downloadMod(link, filename, name);
+	downloadsGUI.downloadMod downloadMod(String link, String filename, String name){
+		return downloadsGui.downloadMod(link, filename, name);
 	}
 
 
