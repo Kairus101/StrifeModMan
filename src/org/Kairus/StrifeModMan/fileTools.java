@@ -11,6 +11,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -77,8 +78,25 @@ public class fileTools {
 						else if (line.toLowerCase().startsWith("update link: "))
 							mod.updateLink = line.substring(13);
 						else if (line.toLowerCase().startsWith("replacewithoutpatchcheck: "))
+						{
 							if (line.substring(26).equals("true"))
 								mod.replaceWithoutPatchCheck = true;
+						}
+						else if (line.toLowerCase().startsWith("requirements: "))
+						{
+							String value = line.split(":")[1];
+							if(value.indexOf(',') == -1)
+							{
+								mod.requirements.add(value.trim());
+							}
+							else
+							{
+								for(String requirement : value.split(", *"))
+								{
+									mod.requirements.add(requirement.trim());
+								}
+							}
+						}
 						else if (line.toLowerCase().equals("start_modifications"))
 							readingModifications = true;
 				}else if (! fileName.toLowerCase().startsWith("original/")){
