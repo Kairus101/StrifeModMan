@@ -18,6 +18,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 import java.util.LinkedHashSet;
@@ -32,7 +33,7 @@ import name.fraser.neil.plaintext.diff_match_patch.Patch;
 
 public class modMan {
 	private static final long serialVersionUID = 1L;
-	String version = "1.14";
+	String version = "1.15.1";
 
 	boolean reloadMods = false;
 
@@ -128,9 +129,6 @@ public class modMan {
 
 	int archiveNumber = 1;
 	String findOutputFile(){
-		//archiveNumber = 2;
-		//return s2Path+"/game/resources"+archiveNumber+".s2z";
-
 		archiveNumber = 1;
 		String output = null;
 		while (true){
@@ -138,17 +136,29 @@ public class modMan {
 			ZipFile zipFile = null;
 			try {
 				zipFile = new ZipFile(output);
-				if ((zipFile.getComment() != null && zipFile.getComment().equals("Long live... ModMan!")) || new File(s2Path+"/game/resources"+archiveNumber+".s2z").length()<10000){
+				if ((zipFile.getComment() != null && zipFile.getComment().equals("Long live... ModMan!")) || 
+				  (new File(output).length()<10000 && zipFile.size() != 0)
+				  ){
 					//we've found our guy.
 					zipFile.close();
 					break;
 				}
 				zipFile.close();
+			} catch (ZipException e){
+				new File(output).delete();
+				//archiveNumber--;
+				return output; //corrupt zip file. This is out guy.
 			} catch (java.io.FileNotFoundException e) {
 				// perfect, doesn't even exist.
+				//archiveNumber--;
 				return output;
 			} catch (IOException e) {
 				e.printStackTrace();
+			} finally {
+				try {
+					if (zipFile != null)
+						zipFile.close();
+				} catch (IOException e) {}
 			}
 			archiveNumber++;
 		}
@@ -166,15 +176,18 @@ public class modMan {
 		for (String s: m.fileNames){
 
 			String fileInS2 = findFileInS2(archiveNumber, s);
-
+			ZipEntry patchFile = sourceZip.getEntry("patch_"+s);//patch
+			
+			
 			//source
-			if (fileInS2==null || m.replaceWithoutPatchCheck){ //new file
+			if ((fileInS2==null || m.replaceWithoutPatchCheck) && patchFile == null){ //new file
 				ZipEntry sourceFile = sourceZip.getEntry(s);
 				InputStream zis = sourceZip.getInputStream(sourceFile);
 
 				//output
 				if (alreadyZipped.get(s) != null){
-					gui.showMessage("Warning ("+m.name+"): Duplicate file with no originals:\n");
+					if (m.requirements.size()==0)
+						gui.showMessage("Warning ("+m.name+"): Duplicate file with no originals:\n");
 					continue;
 				}
 				alreadyZipped.put(s, true);
@@ -215,7 +228,7 @@ public class modMan {
 					//check for original files, if so, make patches and update mod later
 					ZipEntry sourceFile = sourceZip.getEntry("original/"+s);//original
 					if (sourceFile == null){
-						gui.showMessage("Problem in "+m.name+"!\n"+s+"\nFound in resources0, but no patch and no original file.\nIf you are developing this mod, put the official file in your mod pack, under \"original/"+s+"\".");
+						gui.showMessage("Problem in "+m.name+"!\n"+s+"\nFound in resources, but no patch and no original file.\nIf you are developing this mod, put the official file in your mod pack, under \"original/"+s+"\".");
 						continue;
 					}
 
@@ -245,7 +258,7 @@ public class modMan {
 						break;
 					}
 				if (!good){
-					gui.showMessage("Problem in "+m.name+":"+s+"\nApplying diff: "+patch.get(error));
+					gui.showMessage("Problem in "+m.name+":"+s+". So I won't apply it.\n"+(isDeveloper?"Applying diff: "+patch.get(error):""));
 					continue;
 				}
 				toBeZipped.remove(s);
@@ -287,7 +300,7 @@ public class modMan {
 		for(String requirement : Mod.requirements)
 		{
 			boolean requirementFound = false;
-			for(mod m : this.mods)
+			for(mod m : mods)
 			{
 				if(!m.equals(Mod) && m.name.toLowerCase().equals(requirement.toLowerCase()))
 				{
@@ -298,7 +311,7 @@ public class modMan {
 			if(!requirementFound)
 			{
 				//internet
-				for(onlineModDescription m : this.onlineModList)
+				for(onlineModDescription m : onlineModList)
 				{
 					if(m.name.toLowerCase().equals(requirement.toLowerCase()))
 					{
@@ -361,7 +374,7 @@ public class modMan {
 			ArrayList<mod> currentMods = new ArrayList<mod>(this.mods);
 			for (mod m: currentMods)
 			{
-				if ((Boolean)gui.tableData[o++][0] == true)
+				if (!m.framework && (Boolean)gui.tableData[o++][0] == true)
 				{
 					modsToApply.addAll(arrangeRequirements(m));
 				}
@@ -551,7 +564,7 @@ public class modMan {
 			}
 		}
 	}
-
+	public int numMods = 0;
 	void loadModFiles(){
 		mods.clear();
 		final File folder = new File(System.getProperty("user.dir")+"/mods");
@@ -563,10 +576,23 @@ public class modMan {
 				mods.add(fileTools.loadModFile(fileEntry, this));
 			}
 		}
-		gui.tableData = new Object[mods.size()][5];
-		for (int i = 0;i<mods.size();i++){
+		
+		int i = 0;
+		int numFrameworks = 0;
+		while (i<mods.size()-numFrameworks){
+			if (mods.get(i).framework){
+				numFrameworks++;
+				mods.add(mods.remove(i));//move to end
+			}else
+				i++;
+		}
+		numMods = mods.size()-numFrameworks;
+		
+		gui.tableData = new Object[numMods][5];
+		for (i = 0;i<numMods;i++){
 			gui.tableData[i]=mods.get(i).getData();
 		}
+		
 		if (gui.table != null){
 			String[] columnNames = {"Enabled", "Icon", "Name", "Author", "Version"};
 			gui.table.setModel(new DefaultTableModel(gui.tableData, columnNames));
@@ -703,12 +729,13 @@ public class modMan {
 			} catch (Exception e) {
 				gui.showMessage("Failed to get mods.\nThis could be because:\n\nYou aren't connected to the internet\nYou are using a proxy\nstrifehub.com is down.","Failure getting online mod list",0);
 				//e.printStackTrace();
-				onlineModList.add(new onlineModDescription("example mod|Kairus101|1.0|1|gameplay|use ^q to make your text rainbow|RainbowAdder.strifemod"));
+				onlineModList.add(new onlineModDescription("example mod|Kairus101|1.0|1|gameplay|use ^q to make your text rainbow|RainbowAdder.strifemod|false"));
 			}
 		}
 	}
 
 	private boolean purgedOnlineList = false;
+	public int numOnlineMods = 0;
 	public void purgeOnlineModsTable(){
 		if (purgedOnlineList) return;
 		for (int i = 0;i<mods.size();i++){
@@ -719,6 +746,17 @@ public class modMan {
 				}
 			}	
 		}
+		
+		int i = 0;
+		int numFrameworks = 0;
+		while (i<onlineModList.size()-numFrameworks){
+			if (onlineModList.get(i).framework.toLowerCase().equals("true")){
+				numFrameworks++;
+				onlineModList.add(onlineModList.remove(i));//move to end
+			}else
+				i++;
+		}
+		numOnlineMods = onlineModList.size()-numFrameworks;
 		purgedOnlineList = true;
 	}
 
@@ -757,7 +795,9 @@ public class modMan {
 				if (latestVersion!=null && m.version.compareTo(latestVersion) < 0){
 					updated += m.name + " "+m.version+" -> "+latestVersion+"\n";
 					downloadMod(latestLink, m.fileName, m.name);
-					gui.removeFromTable1(mods.indexOf(m));
+					if (!m.framework){
+						gui.removeFromTable1(mods.indexOf(m));
+					}
 					mods.remove(i);
 					i--;
 				}
@@ -804,6 +844,7 @@ public class modMan {
 		String category;
 		String description;
 		String link;
+		String framework;
 		onlineModDescription(String text){
 			simpleStringParser ssp = new simpleStringParser(text);
 			name=ssp.GetNextString();
@@ -813,6 +854,7 @@ public class modMan {
 			category=ssp.GetNextString();
 			description=ssp.GetNextString();
 			link=ssp.GetNextString();
+			framework=ssp.GetNextString();
 		}
 	}
 }

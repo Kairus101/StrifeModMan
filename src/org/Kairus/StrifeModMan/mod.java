@@ -21,6 +21,7 @@ class mod{
 	HashMap<String, String> patchesToSave = new HashMap<String, String>();
 	modMan modman;
 	boolean replaceWithoutPatchCheck = false;
+	boolean framework = false;
 
 
 	mod(String fileName, modMan mm){

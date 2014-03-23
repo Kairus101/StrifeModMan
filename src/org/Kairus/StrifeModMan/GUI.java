@@ -10,9 +10,7 @@ import java.awt.event.WindowEvent;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.regex.Pattern;
@@ -267,7 +265,7 @@ public class GUI extends JFrame {
 						"This mod manager is designed to apply mods to Strife.\n"+
 						"Mods go in the mods folder and should have the .strifemod format.\n"+
 						"Every time strife updates, you should re-run this program and re-apply.\n"+
-						"Any questions, refer to the forum post <to come>",
+						"Troubleshooting/bugs: http://mods.strifehub.com",
 						"User help", JOptionPane.PLAIN_MESSAGE);
 			}});
 		GUIhelpDev.addActionListener(new ActionListener(){
@@ -305,8 +303,14 @@ public class GUI extends JFrame {
 						"Strife ModMan!\n"
 						+ "Developed by Kairus101\n"
 						+ "Version: "+modman.version+"\n"
-						+ "Official forum link: <link incoming>",
-						"Developer help", JOptionPane.PLAIN_MESSAGE);
+						+ "Official website: http://mods.strifehub.com\n"
+						+ "\n"
+						+ "Other community additions:\n"
+						+ "Anakonda: Allowing mods to have requirements.\n"
+						+ "\n"
+						+ "Want to help modman progress too? Github->kairus101\n"
+						,
+						"About Strife Modman", JOptionPane.PLAIN_MESSAGE);
 			}});
 		GUIapplyMods.addActionListener(new ActionListener(){
 			@Override
@@ -327,6 +331,23 @@ public class GUI extends JFrame {
 				JTextArea changes = new JTextArea();
 				popup.setTitle("ModManager ChangeLog");
 				changes.setText(
+						"Version 1.15\n" +
+						"  Mods can now specify requirements. (Courtesy of Anakonda)\n" +
+						"  Fixed a bug where mods with replaceWithoutPatchCheck with patches would fail.\n" +
+						"  Mods can now specify if they are a framework, if so, they won't show in lists.\n" +
+						"  Fixed a bug where corrupt archives stopped apply mods from working.\n" +
+						"  Removed updating mods remotely with an unofficial site, for security.\n" +
+						"  Made merge errors less detailed if not in developer mode.\n" +
+						"\n" +
+						"-------------------------------------------\n" +
+						"Version 1.14\n" +
+						"  Modman can now make moddedStrife.exe and launch Strife safely from commandline.\n" +
+						"\n" +
+						"-------------------------------------------\n" +
+						"Version 1.13\n" +
+						"  Fixed a bug when applying files.\n" +
+						"\n" +
+						"-------------------------------------------\n" +
 						"Version 1.12\n" +
 						"  Made strife update not break everything so long as you are on windows and you start it using the program.\n" +
 						"\n" +
@@ -444,10 +465,11 @@ public class GUI extends JFrame {
 	}
 
 	void makeTable2Data(){
-		table2Data = new Object[modman.onlineModList.size()][];
+		table2Data = new Object[modman.numOnlineMods][];
 		int i = 0;
 		for (onlineModDescription o:modman.onlineModList){
-			table2Data[i++] = new Object[]{"<html>"+o.name+"</html>", o.rating, o.author, o.category, "<html>"+o.description+"</html>"};
+			if (!o.framework.toLowerCase().equals("true"))
+				table2Data[i++] = new Object[]{"<html>"+o.name+"</html>", o.rating, o.author, o.category, "<html>"+o.description+"</html>"};
 		}
 	}
 

@@ -11,7 +11,6 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -64,7 +63,7 @@ public class fileTools {
 					BufferedReader reader = new BufferedReader(new InputStreamReader(zis));
 					String line;
 					boolean readingModifications = false;
-					while ((line = reader.readLine())!=null)
+					while ((line = reader.readLine())!=null){
 						if (readingModifications && !line.startsWith("#")){
 							mod.xmlModifications.write(line+"\n");
 						}else if (line.toLowerCase().startsWith("name: "))
@@ -75,10 +74,12 @@ public class fileTools {
 							mod.version = line.substring(9);
 						else if (line.toLowerCase().startsWith("category: "))
 							mod.category = line.substring(10);
-						else if (line.toLowerCase().startsWith("update link: "))
-							mod.updateLink = line.substring(13);
-						else if (line.toLowerCase().startsWith("replacewithoutpatchcheck: "))
-						{
+						//else if (line.toLowerCase().startsWith("update link: ")) //disabled for the security of the community.
+							//mod.updateLink = line.substring(13);
+						else if (line.toLowerCase().startsWith("framework: ")){
+							if (line.substring(11).equals("true"))
+								mod.framework = true;
+						}else if (line.toLowerCase().startsWith("replacewithoutpatchcheck: ")){
 							if (line.substring(26).equals("true"))
 								mod.replaceWithoutPatchCheck = true;
 						}
@@ -99,6 +100,10 @@ public class fileTools {
 						}
 						else if (line.toLowerCase().equals("start_modifications"))
 							readingModifications = true;
+						else{
+							//System.out.println("Unknown line: "+line);
+						}
+					}
 				}else if (! fileName.toLowerCase().startsWith("original/")){
 					addIfNotThere(mod.fileNames, fileName);
 				}
