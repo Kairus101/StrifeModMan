@@ -468,7 +468,7 @@ public class GUI extends JFrame {
 		table2Data = new Object[modman.numOnlineMods][];
 		int i = 0;
 		for (onlineModDescription o:modman.onlineModList){
-			if (!o.framework.toLowerCase().equals("true"))
+			if (!o.framework.toLowerCase().equals("true") || modman.isDeveloper)
 				table2Data[i++] = new Object[]{"<html>"+o.name+"</html>", o.rating, o.author, o.category, "<html>"+o.description+"</html>"};
 		}
 	}

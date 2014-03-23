@@ -33,7 +33,7 @@ import name.fraser.neil.plaintext.diff_match_patch.Patch;
 
 public class modMan {
 	private static final long serialVersionUID = 1L;
-	String version = "1.15.1";
+	String version = "1.15.2";
 
 	boolean reloadMods = false;
 
@@ -586,7 +586,10 @@ public class modMan {
 			}else
 				i++;
 		}
-		numMods = mods.size()-numFrameworks;
+		if (!isDeveloper)
+			numMods = mods.size()-numFrameworks;
+		else
+			numMods = mods.size();
 		
 		gui.tableData = new Object[numMods][5];
 		for (i = 0;i<numMods;i++){
@@ -756,7 +759,12 @@ public class modMan {
 			}else
 				i++;
 		}
-		numOnlineMods = onlineModList.size()-numFrameworks;
+
+		if (!isDeveloper)
+			numOnlineMods = onlineModList.size()-numFrameworks;
+		else
+			numOnlineMods = onlineModList.size();
+		
 		purgedOnlineList = true;
 	}
 
