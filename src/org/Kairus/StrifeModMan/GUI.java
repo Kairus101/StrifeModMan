@@ -249,7 +249,7 @@ public class GUI extends JFrame {
 					bout.flush();
 					bout.close();
 					in.close();
-					showMessage("Created "+new File("Modded Strife.exe").getAbsolutePath()+", this must stay next to modManager.jar, but you can create shortcuts from it or pin it to your taskbar! Use it or this program to ensure strife updates don't make mods permanent!");
+					showMessage("Created "+new File("Modded Strife.exe").getAbsolutePath()+", this needs to stay next to modManager.jar, but you can create shortcuts from it or pin it to your taskbar!");
 				} catch (FileNotFoundException e2) {
 					e2.printStackTrace();
 				} catch (MalformedURLException e3) {
@@ -331,6 +331,12 @@ public class GUI extends JFrame {
 				JTextArea changes = new JTextArea();
 				popup.setTitle("ModManager ChangeLog");
 				changes.setText(
+						"Version 1.16\n" +
+						"  Mods are now bundled separately from the game code\n" +
+						"  No more corrupt files, no more issues with resources\n" +
+						"  Should now be linux-compatible!\n" +
+						"\n" +
+						"-------------------------------------------\n" +
 						"Version 1.15\n" +
 						"  Mods can now specify requirements. (Courtesy of Anakonda)\n" +
 						"  Fixed a bug where mods with replaceWithoutPatchCheck with patches would fail.\n" +
@@ -461,7 +467,7 @@ public class GUI extends JFrame {
 		setVisible(true);
 
 		if (!new File("Modded Strife.exe").exists())
-			showMessage("Warning!\nStrife updates may make mods permanent unless you are using windows and launch strife using this program, or the launcher it creates from File->Create Strife launcher!", "Warning", 0);
+			showMessage("You can easily start the game with mods with the file created by: File->Create Strife launcher!");
 	}
 
 	void makeTable2Data(){

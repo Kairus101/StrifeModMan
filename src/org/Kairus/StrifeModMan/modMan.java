@@ -3,6 +3,7 @@ package org.Kairus.StrifeModMan;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
@@ -33,7 +34,7 @@ import name.fraser.neil.plaintext.diff_match_patch.Patch;
 
 public class modMan {
 	private static final long serialVersionUID = 1L;
-	String version = "1.15.2";
+	String version = "1.16";
 
 	boolean reloadMods = false;
 
@@ -54,9 +55,10 @@ public class modMan {
 	boolean isDeveloper = false;
 	ArrayList<mod> mods = new ArrayList<mod>();
 	byte[] buffer = new byte[1024];
+	String strifeVersion;
 
-	HashMap<String, String> toBeZipped = new HashMap<String, String>();
-	HashMap<String, Boolean> alreadyZipped = new HashMap<String, Boolean>();
+	HashMap<String, String> toBeAdded = new HashMap<String, String>();
+	HashMap<String, Boolean> alreadyDone = new HashMap<String, Boolean>();
 
 	public modMan(){}
 	public void init(){
@@ -77,7 +79,7 @@ public class modMan {
 		{
 			e.printStackTrace();
 		}
-
+		
 		gui = new GUI(this);
 		downloadsGui = new downloadsGUI(this);
 
@@ -87,6 +89,8 @@ public class modMan {
 		//load config
 		loadFromConfig();
 
+		strifeVersion = fileTools.getStrifeVersionFromFile(s2Path+"/strife.version");
+		
 		//init GUI
 		loadModFiles();
 
@@ -128,7 +132,7 @@ public class modMan {
 	}
 
 	int archiveNumber = 1;
-	String findOutputFile(){
+	String findArchives(){
 		archiveNumber = 1;
 		String output = null;
 		while (true){
@@ -141,13 +145,15 @@ public class modMan {
 				  ){
 					//we've found our guy.
 					zipFile.close();
+					new File(output).delete(); // REMOVE OUT-DATED S2Z FORMAT!
+					//archiveNumber--;
 					break;
 				}
 				zipFile.close();
 			} catch (ZipException e){
 				new File(output).delete();
 				//archiveNumber--;
-				return output; //corrupt zip file. This is out guy.
+				return output; //corrupt zip file. This is oue guy.
 			} catch (java.io.FileNotFoundException e) {
 				// perfect, doesn't even exist.
 				//archiveNumber--;
@@ -168,8 +174,10 @@ public class modMan {
 
 	String output = null;
 
-	boolean applyMod(mod m, ZipOutputStream zos) throws java.io.IOException
-	{
+	boolean applyMod(mod m) throws java.io.IOException	{
+		// Delete old mod files
+		recursiveDelete(new File(s2Path+"/game/mods/"+m.name+"/"));
+		
 		appliedMods += m.name+"|";
 		m.patchesToSave.clear();
 		ZipFile sourceZip = new ZipFile(m.fileName);
@@ -185,21 +193,22 @@ public class modMan {
 				InputStream zis = sourceZip.getInputStream(sourceFile);
 
 				//output
-				if (alreadyZipped.get(s) != null){
+				if (alreadyDone.get(s) != null){
 					if (m.requirements.size()==0)
 						gui.showMessage("Warning ("+m.name+"): Duplicate file with no originals:\n");
 					continue;
 				}
-				alreadyZipped.put(s, true);
-				ZipEntry ze = new ZipEntry(s);
-				zos.putNextEntry(ze);
+				alreadyDone.put(s, true);
 
+				File f = new File(s2Path+"/game/mods/"+m.name.replace(" ", "_")+"/"+s);
+				f.getParentFile().mkdirs();
+				f.createNewFile();
+				FileOutputStream fos = new FileOutputStream(f);
 				int len;
 				while ((len = zis.read(buffer)) > 0) {
-					zos.write(buffer, 0, len);
+					fos.write(buffer, 0, len);
 				}
-				zis.close();
-				zos.closeEntry();
+				fos.close();
 			}else{
 				//we need to perform a diff.
 				//step 1, check for a patch file, if so, skip to step 3
@@ -213,8 +222,8 @@ public class modMan {
 				LinkedList<Patch> patch = null;
 				String current = "";
 
-				if (toBeZipped.get(s) != null){ // not the first mod
-					current = toBeZipped.get(s);
+				if (toBeAdded.get(s) != null){ // not the first mod
+					current = toBeAdded.get(s);
 				}else
 					current = fileInS2; //current
 
@@ -261,8 +270,15 @@ public class modMan {
 					gui.showMessage("Problem in "+m.name+":"+s+". So I won't apply it.\n"+(isDeveloper?"Applying diff: "+patch.get(error):""));
 					continue;
 				}
-				toBeZipped.remove(s);
-				toBeZipped.put(s, (String)result[0]);
+				toBeAdded.remove(s);
+				toBeAdded.put(s, (String)result[0]);
+				
+
+				File f = new File(s2Path+"/game/mods/"+m.name.replace(" ", "_")+"/"+s);
+				f.getParentFile().mkdirs();
+				PrintWriter fos = new PrintWriter(f);
+				fos.print((String)result[0]);
+				fos.close();
 
 			}
 		}
@@ -348,41 +364,53 @@ public class modMan {
 
 		return returnArray;
 	}
+	
+	void recursiveDelete(File file) {
+        if (!file.exists())
+            return;
+        if (file.isDirectory()) {
+            for (File f : file.listFiles()) {
+                recursiveDelete(f);
+            }
+        }
+        file.delete();
+    }
 
 	void applyMods(){
 
 		populateOnlineModsTable();
 
-		toBeZipped.clear();
-		alreadyZipped.clear();
+		toBeAdded.clear();
+		alreadyDone.clear();
 
-		//toBeZipped.put("modmanPlaceholder", "");
+		//toBeAdded.put("modmanPlaceholder", "");
 
 		//lets find out output.
-		output = findOutputFile();
+		output = findArchives();
 
 		boolean success = true;
 
+		new File(s2Path+"/game/mods/").mkdirs();
+		
 		try {
-			FileOutputStream fos = new FileOutputStream(output);
-			ZipOutputStream zos = new ZipOutputStream(fos);
-			zos.setComment("Long live... ModMan!");
 			appliedMods = "";
 			this.appliedModsList.clear();
+			
 			int o = 0;
 			LinkedHashSet<mod> modsToApply = new LinkedHashSet<mod>();
 			ArrayList<mod> currentMods = new ArrayList<mod>(this.mods);
-			for (mod m: currentMods)
-			{
-				if (!m.framework && (Boolean)gui.tableData[o++][0] == true)
-				{
+			
+			// Add framework mods 
+			for (mod m: currentMods){
+				if (!m.framework && (Boolean)gui.tableData[o++][0] == true)	{
 					modsToApply.addAll(arrangeRequirements(m));
 				}
 			}
 
+			// Add normal mods
 			for (mod m: modsToApply)
 			{
-				if(!applyMod(m, zos))
+				if(!applyMod(m))
 				{
 					success = false;
 					break;
@@ -403,8 +431,8 @@ public class modMan {
 					//Is this a valid command?
 					if (modification.toLowerCase().trim().equals("replace") || modification.toLowerCase().trim().equals("add before") || modification.toLowerCase().trim().equals("add after")){
 						String file = parser.GetNextString();
-						addFileIfNotAdded(toBeZipped, file);
-						String fileText = toBeZipped.get(file);
+						addFileIfNotAdded(toBeAdded, file);
+						String fileText = toBeAdded.get(file);
 						String text1 = parser.GetNextString();
 						String text2 = parser.GetNextString();
 						String newText = null;
@@ -428,28 +456,25 @@ public class modMan {
 							else
 								newText = fileText.substring(0, insertPosition) + text2 + fileText.substring(insertPosition);
 						}
-						toBeZipped.remove(file);
-						toBeZipped.put(file, newText);
+						toBeAdded.remove(file);
+						toBeAdded.put(file, newText);
+
+						File f = new File(s2Path+"/game/mods/"+m.name.replace(" ", "_")+"/"+file);
+						PrintWriter fos = new PrintWriter(f);
+						fos.print(newText);
+						fos.close();
 					}
 				}
 			}
-
-			//step 5
-			//put new file in resources
-			Iterator<?> it = toBeZipped.entrySet().iterator();
-			while (it.hasNext()) {
-				@SuppressWarnings("unchecked")
-				Map.Entry<String, String> pairs = (Map.Entry<String, String>)it.next();		        
-				ZipEntry ze = new ZipEntry(pairs.getKey());
-				zos.putNextEntry(ze);
-				PrintWriter writer = new PrintWriter(zos);
-				writer.println(pairs.getValue());
-				writer.flush();
-				zos.closeEntry();
-				it.remove(); // avoids a ConcurrentModificationException
-			}
-			//remember close it
-			zos.close();
+			// Create our lua script, if mods have been selected
+			//String modmanLoader = fileTools.store(new FileInputStream(new File("modman.lua")));
+			// It's much easier to hard-code the lua into the modman code.
+			String modmanLoader = "--Long live... ModMan!\nlibThread.threadFunc(function()\n	wait(500)\n	if GetCvarString('host_version') ~= '{version}' then\n		GenericDialog(\n			Translate('Outdated Mods'), Translate('^rYour mods are out of date!\\n^*Do you want to shut down Strife, so you can open modman and re-apply mods?\\nOtherwise you may have game-breaking bugs!'), '', Translate('general_ok'), Translate('I\\\'ll deal'), \n			function()\n				Cmd('Quit')\n			end,\n			function()\n				--Cmd('Quit')\n			end,\n			nil,\n			nil,\n			true\n		)\n	end\nend)";
+			modmanLoader = modmanLoader.replace("{version}", strifeVersion);
+			PrintWriter pout = new PrintWriter(new File(s2Path+"/game/mods/modman.lua"));
+			pout.print(modmanLoader);
+			pout.close();
+			
 			saveConfig();
 
 			if (success && gui.showYesNo("Success.", "Mod merge successful.\n\nLaunch Strife") == 0){ //0 is yes.
@@ -463,104 +488,42 @@ public class modMan {
 			e.printStackTrace();
 		}
 	}
+	
+	String getLaunchParams(){
+		String ret = "game";
+		simpleStringParser parser = new simpleStringParser(appliedMods);
+		while (true){
+			String mod = parser.GetNextString();
+			if (mod == null)
+				break;
+			ret += ";game/mods/"+mod.replace(" ", "_");
+		}
+		return ret;
+	}
 
 	void launchStrife(){
-		System.out.println("launching strife!");
+		if (output == null) output = findArchives();
+		final ProcessBuilder builder = new ProcessBuilder(s2Path+"/bin/strife", 
+				"-mod", getLaunchParams(),
+				"-execute", "set host_autoexec \"\"\"script \\\\\\\"dofile 'game/mods/modman.lua'\\\\\\\"\"\"\"\""
+		);
 		try {
-			if (output == null) output = findOutputFile();
-
-			final ArrayList<String> command = new ArrayList<String>();
-			command.add(s2Path+"/bin/strife.exe");
-			final ProcessBuilder builder = new ProcessBuilder(command);
 			Process p = builder.start();
-			if (gui != null){
-				gui.dispose();
-				gui = null;
-			}
-			if (downloadsGui != null){
-				downloadsGui.dispose();
-				downloadsGui = null;
-			}
-			mods = null;
-			onlineModList = null;
-			System.gc();
-
-			//wait for the program to close.
-			Thread.currentThread().setPriority(Thread.MIN_PRIORITY);
-			System.out.println("waiting for strife to close.");
-			p.waitFor();
-			System.out.println("closed! ok, gonna check for the updater..");
-			Thread.currentThread().setPriority(Thread.NORM_PRIORITY);
-
-			long startTime = System.currentTimeMillis();
-			//ok, now that it is closed, lets wait for the updater, and remove our files while it does it's thing..
-			boolean updating = false;
-			while (System.currentTimeMillis() <  startTime + 10000 && !updating) { //10 secs of waiting.. slow systems, you know?
-				try {
-					String line;
-					Process p2 = Runtime.getRuntime().exec
-					(System.getenv("windir") +"\\system32\\"+"tasklist.exe");
-					BufferedReader input = new BufferedReader(new InputStreamReader(p2.getInputStream()));
-					while ((line = input.readLine()) != null) {
-						if (line.startsWith("updater.exe")){
-							//BOOM! NOT TODAY SCUMBAG!
-							System.out.println("FOUND IT!");
-							updating = true;
-							break;
-						}
-					}
-					input.close();
-					if (!updating)
-						Thread.sleep(250);//only run 4 times a second
-				} catch (Exception err) {
-					err.printStackTrace();
-				}
-			}
-			if (updating){
-				System.out.println("Renaming "+output+" to "+output+".tmpFile");
-				new File(output).renameTo(new File(output+".tmpFile"));
-
-				System.out.println("Waiting for it to finish updating.");
-				boolean stillUpdating = true;
-				while (stillUpdating){
-					stillUpdating = false;
-					try {
-						String line;
-						Process p2 = Runtime.getRuntime().exec
-						(System.getenv("windir") +"\\system32\\"+"tasklist.exe");
-						BufferedReader input = new BufferedReader(new InputStreamReader(p2.getInputStream()));
-						while ((line = input.readLine()) != null) {
-							if (line.startsWith("updater.exe")){
-								//BOOM! NOT TODAY SCUMBAG!
-								stillUpdating = true;
-								break;
-							}
-						}
-						input.close();
-						if (stillUpdating)
-							Thread.sleep(250);//only run 4 times a second
-					} catch (Exception err) {
-						err.printStackTrace();
-					}
-				}
-				System.out.println("putting it back to normal!");
-				new File(output+".tmpFile").renameTo(new File(findOutputFile()));
-			}else
-				System.out.println("Timed out..");
-		}catch(InterruptedException e){} catch (IOException e) {
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		System.exit(0);
 	}
 
-	public void addFileIfNotAdded(HashMap<String, String> toBeZipped, String file) throws IOException{
-		if (toBeZipped.get(file) == null){//we need to add the file to toBeZipped
+	public void addFileIfNotAdded(HashMap<String, String> toBeAdded, String file) throws IOException{
+		if (toBeAdded.get(file) == null){//we need to add the file to toBeAdded
 			String s2File = findFileInS2(archiveNumber, file);
 			if (s2File == null){
 				gui.showMessage("Error: file: "+file+" not found! Mod won't be applied.", "Mod merge unsuccessful", 1);
+				System.out.println("Error: file: "+file+" not found! Mod won't be applied.");
 				throw new IOException();
 			}else{
-				toBeZipped.put(file, s2File);
+				toBeAdded.put(file, s2File);
 			}
 		}
 	}
@@ -647,7 +610,6 @@ public class modMan {
 				o[0] = true;
 			}
 		}
-
 	}
 
 	public void saveConfig(){
