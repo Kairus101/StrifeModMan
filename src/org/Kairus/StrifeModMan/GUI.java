@@ -335,6 +335,8 @@ public class GUI extends JFrame {
 						"  Mods are now bundled separately from the game code\n" +
 						"  No more corrupt files, no more issues with resources\n" +
 						"  Should now be linux-compatible!\n" +
+						"  .1: Made it that all mods share 1 config. Otherwise you'd lose your config lots\n" +
+						"  Changed mod applying to use /mods instead of /game/mods, to improve Strife performance\n" +
 						"\n" +
 						"-------------------------------------------\n" +
 						"Version 1.15\n" +

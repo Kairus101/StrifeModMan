@@ -170,6 +170,7 @@ public class fileTools {
 			version = reader.readLine();
 			version = version.substring(0, version.lastIndexOf("\""));
 			version = version.substring(version.lastIndexOf("\"")+1);
+			reader.close();
 			//System.out.println(version);
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();

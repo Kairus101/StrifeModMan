@@ -34,7 +34,7 @@ import name.fraser.neil.plaintext.diff_match_patch.Patch;
 
 public class modMan {
 	private static final long serialVersionUID = 1L;
-	String version = "1.16";
+	String version = "1.16.1";
 
 	boolean reloadMods = false;
 
@@ -176,7 +176,8 @@ public class modMan {
 
 	boolean applyMod(mod m) throws java.io.IOException	{
 		// Delete old mod files
-		recursiveDelete(new File(s2Path+"/game/mods/"+m.name+"/"));
+		recursiveDelete(new File(s2Path+"/game/mods/"));
+		recursiveDelete(new File(s2Path+"/mods/"+m.name+"/"));
 		
 		appliedMods += m.name+"|";
 		m.patchesToSave.clear();
@@ -200,7 +201,7 @@ public class modMan {
 				}
 				alreadyDone.put(s, true);
 
-				File f = new File(s2Path+"/game/mods/"+m.name.replace(" ", "_")+"/"+s);
+				File f = new File(s2Path+"/mods/"+m.name.replace(" ", "_")+"/"+s);
 				f.getParentFile().mkdirs();
 				f.createNewFile();
 				FileOutputStream fos = new FileOutputStream(f);
@@ -274,7 +275,7 @@ public class modMan {
 				toBeAdded.put(s, (String)result[0]);
 				
 
-				File f = new File(s2Path+"/game/mods/"+m.name.replace(" ", "_")+"/"+s);
+				File f = new File(s2Path+"/mods/"+m.name.replace(" ", "_")+"/"+s);
 				f.getParentFile().mkdirs();
 				PrintWriter fos = new PrintWriter(f);
 				fos.print((String)result[0]);
@@ -390,7 +391,7 @@ public class modMan {
 
 		boolean success = true;
 
-		new File(s2Path+"/game/mods/").mkdirs();
+		new File(s2Path+"/mods/").mkdirs();
 		
 		try {
 			appliedMods = "";
@@ -459,7 +460,7 @@ public class modMan {
 						toBeAdded.remove(file);
 						toBeAdded.put(file, newText);
 
-						File f = new File(s2Path+"/game/mods/"+m.name.replace(" ", "_")+"/"+file);
+						File f = new File(s2Path+"/mods/"+m.name.replace(" ", "_")+"/"+file);
 						PrintWriter fos = new PrintWriter(f);
 						fos.print(newText);
 						fos.close();
@@ -471,7 +472,7 @@ public class modMan {
 			// It's much easier to hard-code the lua into the modman code.
 			String modmanLoader = "--Long live... ModMan!\nlibThread.threadFunc(function()\n	wait(500)\n	if GetCvarString('host_version') ~= '{version}' then\n		GenericDialog(\n			Translate('Outdated Mods'), Translate('^rYour mods are out of date!\\n^*Do you want to shut down Strife, so you can open modman and re-apply mods?\\nOtherwise you may have game-breaking bugs!'), '', Translate('general_ok'), Translate('I\\\'ll deal'), \n			function()\n				Cmd('Quit')\n			end,\n			function()\n				--Cmd('Quit')\n			end,\n			nil,\n			nil,\n			true\n		)\n	end\nend)";
 			modmanLoader = modmanLoader.replace("{version}", strifeVersion);
-			PrintWriter pout = new PrintWriter(new File(s2Path+"/game/mods/modman.lua"));
+			PrintWriter pout = new PrintWriter(new File(s2Path+"/mods/modman.lua"));
 			pout.print(modmanLoader);
 			pout.close();
 			
@@ -491,13 +492,17 @@ public class modMan {
 	
 	String getLaunchParams(){
 		String ret = "game";
+		boolean applied = false;
 		simpleStringParser parser = new simpleStringParser(appliedMods);
 		while (true){
 			String mod = parser.GetNextString();
 			if (mod == null)
 				break;
-			ret += ";game/mods/"+mod.replace(" ", "_");
+			ret += ";mods/"+mod.replace(" ", "_");
+			applied = true;
 		}
+		if (applied)
+			ret += ";moddedStrife"; // Make all configs in this folder
 		return ret;
 	}
 
@@ -505,7 +510,8 @@ public class modMan {
 		if (output == null) output = findArchives();
 		final ProcessBuilder builder = new ProcessBuilder(s2Path+"/bin/strife", 
 				"-mod", getLaunchParams(),
-				"-execute", "set host_autoexec \"\"\"script \\\\\\\"dofile 'game/mods/modman.lua'\\\\\\\"\"\"\"\""
+				"-execute", "set host_autoexec \"\"\"script \\\\\\\"dofile 'mods/modman.lua'\\\\\\\"\"\"\"\""//,
+				//"-config", "../../game/"
 		);
 		try {
 			Process p = builder.start();
