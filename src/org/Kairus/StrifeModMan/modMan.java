@@ -34,7 +34,7 @@ import name.fraser.neil.plaintext.diff_match_patch.Patch;
 
 public class modMan {
 	private static final long serialVersionUID = 1L;
-	String version = "1.16.1";
+	String version = "1.16.2";
 
 	boolean reloadMods = false;
 
