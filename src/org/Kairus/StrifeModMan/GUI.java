@@ -303,7 +303,7 @@ public class GUI extends JFrame {
 						"Strife ModMan!\n"
 						+ "Developed by Kairus101\n"
 						+ "Version: "+modman.version+"\n"
-						+ "Official website: http://mods.strifehub.com\n"
+						+ "Official website: http://mods.strifehub.com (downed)\n"
 						+ "\n"
 						+ "Other community additions:\n"
 						+ "Anakonda: Allowing mods to have requirements.\n"
@@ -337,6 +337,8 @@ public class GUI extends JFrame {
 						"  Should now be linux-compatible!\n" +
 						"  .1: Made it that all mods share 1 config. Otherwise you'd lose your config lots\n" +
 						"  Changed mod applying to use /mods instead of /game/mods, to improve Strife performance\n" +
+						"  .2: Fixed a bug when the strife version ended in .0\n" +
+						"  .3: mods.strifehub is going to be down for a long time. RIP. Stopped web-downloading.\n" +
 						"\n" +
 						"-------------------------------------------\n" +
 						"Version 1.15\n" +
@@ -441,7 +443,7 @@ public class GUI extends JFrame {
 			public void stateChanged(ChangeEvent arg0) {
 				if (table2 == null){
 					modman.populateOnlineModsTable();
-					modman.purgeOnlineModsTable();
+					//modman.purgeOnlineModsTable();
 
 					makeTable2Data();
 

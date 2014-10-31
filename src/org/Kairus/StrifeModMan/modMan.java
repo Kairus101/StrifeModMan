@@ -34,7 +34,7 @@ import name.fraser.neil.plaintext.diff_match_patch.Patch;
 
 public class modMan {
 	private static final long serialVersionUID = 1L;
-	String version = "1.16.2";
+	String version = "1.16.3";
 
 	boolean reloadMods = false;
 
@@ -100,6 +100,7 @@ public class modMan {
 		gui.init();
 		downloadsGui.init();
 
+		/*
 		if ( mods.size()>0 && gui.showYesNo("Update mods?", "Would you like to update your mods?") == 0){ //0 is yes.
 			//update mods
 			String updated = checkForModUpdates();
@@ -110,6 +111,7 @@ public class modMan {
 			//if (reloadMods)
 			//	loadModFiles();
 		}
+		*/
 	}
 
 	String findFileInS2(int number, String name){
@@ -379,7 +381,7 @@ public class modMan {
 
 	void applyMods(){
 
-		populateOnlineModsTable();
+		//populateOnlineModsTable();
 
 		toBeAdded.clear();
 		alreadyDone.clear();
@@ -674,7 +676,7 @@ public class modMan {
 				System.exit(0);
 			}
 		} catch (Exception e) {
-			gui.showMessage("Failed to update modman.\nThis could be because:\n\nYou aren't connected to the internet\nYou are using a proxy\nstrifehub.com is down.","Failure updateing modman",0);
+			gui.showMessage("Failed to update modman.\nThis could be because:\n\n"/*+"You aren't connected to the internet\nYou are using a proxy\n"*/+"strifehub.com is down.","Failure updateing modman",0);
 		}
 	}
 
@@ -688,6 +690,7 @@ public class modMan {
 
 	public void populateOnlineModsTable(){
 		if (onlineModList.size()==0){
+			/*
 			//populate the online mods table.
 			try {
 				BufferedReader webIn;
@@ -697,11 +700,11 @@ public class modMan {
 					if (input.startsWith("<")) throw new Exception();
 					onlineModList.add(new onlineModDescription(input));
 				}
-			} catch (Exception e) {
-				gui.showMessage("Failed to get mods.\nThis could be because:\n\nYou aren't connected to the internet\nYou are using a proxy\nstrifehub.com is down.","Failure getting online mod list",0);
+			} catch (Exception e) {*/
+				gui.showMessage("Failed to get mods.\nThis could be because:\n\n"/*+"You aren't connected to the internet\nYou are using a proxy\n"*/+"strifehub.com is down.","Failure updateing modman",0);
 				//e.printStackTrace();
-				onlineModList.add(new onlineModDescription("example mod|Kairus101|1.0|1|gameplay|use ^q to make your text rainbow|RainbowAdder.strifemod|false"));
-			}
+				//onlineModList.add(new onlineModDescription("example mod|Kairus101|1.0|1|gameplay|use ^q to make your text rainbow|RainbowAdder.strifemod|false"));
+			//}
 		}
 	}
 
